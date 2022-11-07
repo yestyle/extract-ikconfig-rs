@@ -1,7 +1,9 @@
 use clap::{Arg, Command};
+use flate2::read::GzDecoder;
 use std::{
     fs::File,
-    io::{self, ErrorKind, Read},
+    io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom},
+    str::from_utf8,
 };
 
 fn scan_term(file: &mut File, pattern: &[u8]) -> Result<usize, io::Error> {
@@ -13,8 +15,8 @@ fn scan_term(file: &mut File, pattern: &[u8]) -> Result<usize, io::Error> {
             if b == pattern[start] {
                 start += 1;
                 if start == pattern.len() {
-                    // let offset point to the start of the term
-                    offset -= start - 2;
+                    // let offset point to the start of the pattern
+                    offset -= start - 1;
                     break;
                 }
             } else {
@@ -31,6 +33,38 @@ fn scan_term(file: &mut File, pattern: &[u8]) -> Result<usize, io::Error> {
     }
 }
 
+fn dump_config_gzip(file: &mut File, offset: usize) {
+    if file.seek(SeekFrom::Start(offset as u64)).is_err() {
+        eprintln!("Failed to seek to offset {offset}");
+        return;
+    }
+
+    let mut buf = Vec::new();
+    let size = file.read_to_end(&mut buf).unwrap_or_default();
+    if size == 0 {
+        eprintln!("Failed to read file");
+        return;
+    }
+
+    let mut gz = GzDecoder::new(BufReader::new(&buf[..]));
+    const CHUNK: usize = 1024;
+    let mut bytes = vec![0; CHUNK];
+    loop {
+        match gz.read(&mut bytes) {
+            Ok(read) => {
+                if read == 0 {
+                    return;
+                }
+                print!("{}", from_utf8(&bytes[..read]).unwrap());
+            }
+            Err(err) => {
+                eprintln!("Failed to deflate the file: {err}");
+                return;
+            }
+        };
+    }
+}
+
 fn main() {
     let matches = Command::new(env!("CARGO_BIN_NAME"))
         .about("An utility to extract the .config file from a kernel image")
@@ -38,12 +72,14 @@ fn main() {
         .arg(Arg::new("image").help("kernel image compiled with CONFIG_IKCONFIG"))
         .get_matches();
 
+    // "image" argument is required so could be unwrapped safely
     let image = matches.get_one::<String>("image").unwrap();
-    let mut file = if let Ok(image) = File::open(image) {
-        image
-    } else {
-        eprintln!("Failed to open file: {image}");
-        return;
+    let mut file = match File::open(image) {
+        Ok(image) => image,
+        Err(err) => {
+            eprintln!("Failed to open file {image}: {err}");
+            return;
+        }
     };
 
     // Prepare the search pattern
@@ -51,7 +87,8 @@ fn main() {
     pattern.extend_from_slice(&[0x1f, 0x8b, 0x08]);
 
     if let Ok(offset) = scan_term(&mut file, &pattern) {
-        println!("{offset}");
+        // Skip "IKCFG_ST" and the rest is config_data.gz
+        dump_config_gzip(&mut file, offset + "IKCFG_ST".len());
     } else {
         eprintln!(
             "In-kernel config not found. Please ensure the kernel is compiled with CONFIG_IKCONFIG"
