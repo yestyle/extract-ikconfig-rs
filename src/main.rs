@@ -82,11 +82,13 @@ fn main() {
         }
     };
 
-    // Prepare the search pattern
-    let mut pattern = "IKCFG_ST".to_string().as_bytes().to_vec();
-    pattern.extend_from_slice(&[0x1f, 0x8b, 0x08]);
+    // search pattern:
+    // IKCFG_ST is the start flag of in-kernel config
+    // `1f 8b` is the magic number of gzip format
+    // `08` is DEFLATE compression method
+    let pattern = b"IKCFG_ST\x1f\x8b\x08";
 
-    if let Ok(offset) = scan_term(&mut file, &pattern) {
+    if let Ok(offset) = scan_term(&mut file, pattern) {
         // Skip "IKCFG_ST" and the rest is config_data.gz
         dump_config_gzip(&mut file, offset + "IKCFG_ST".len());
     } else {
