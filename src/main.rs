@@ -1,33 +1,48 @@
 use clap::{Arg, Command};
 use flate2::read::GzDecoder;
+use grep_matcher::Matcher;
+use grep_regex::RegexMatcher;
+use grep_searcher::{Searcher, Sink, SinkMatch};
 use std::{
     fs::File,
     io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom},
     str::from_utf8,
 };
 
-fn scan_term(file: &mut File, pattern: &[u8]) -> Result<usize, io::Error> {
-    let filelen = file.metadata()?.len();
-    let mut start = 0;
-    let mut offset = 0;
-    for b in file.bytes() {
-        if let Ok(b) = b {
-            if b == pattern[start] {
-                start += 1;
-                if start == pattern.len() {
-                    // let offset point to the start of the pattern
-                    offset -= start - 1;
-                    break;
-                }
-            } else {
-                start = 0;
-            }
-        }
-        offset += 1;
-    }
+struct Offset<F>(F)
+where
+    F: FnMut(u64, &[u8]) -> Result<bool, io::Error>;
 
-    if offset < filelen as usize - pattern.len() {
-        Ok(offset)
+impl<F> Sink for Offset<F>
+where
+    F: FnMut(u64, &[u8]) -> Result<bool, io::Error>,
+{
+    type Error = io::Error;
+
+    fn matched(&mut self, _searcher: &Searcher, mat: &SinkMatch<'_>) -> Result<bool, io::Error> {
+        // mat.absolute_bytes_offset() is the offset of the matched line
+        // mat.bytes() is the bytes of the matched line
+        (self.0)(mat.absolute_byte_offset(), mat.bytes())
+    }
+}
+
+fn search_pattern(file: &File, pattern: &[u8]) -> Result<usize, io::Error> {
+    let matcher = RegexMatcher::new(from_utf8(pattern).unwrap()).unwrap();
+    let mut offset = 0;
+    Searcher::new().search_file(
+        &matcher,
+        file,
+        Offset(|line_offset, bytes| {
+            // find pattern within the line and add onto line offset
+            // We are guaranteed to find a match, so the unwrap is OK.
+            let mymatch = matcher.find(bytes).unwrap().unwrap();
+            offset = line_offset + mymatch.start() as u64;
+            Ok(true)
+        }),
+    )?;
+
+    if offset != 0 {
+        Ok(offset as usize)
     } else {
         Err(io::Error::from(ErrorKind::NotFound))
     }
@@ -84,11 +99,9 @@ fn main() {
 
     // search pattern:
     // IKCFG_ST is the start flag of in-kernel config
-    // `1f 8b` is the magic number of gzip format
-    // `08` is DEFLATE compression method
-    let pattern = b"IKCFG_ST\x1f\x8b\x08";
+    let pattern = b"IKCFG_ST";
 
-    if let Ok(offset) = scan_term(&mut file, pattern) {
+    if let Ok(offset) = search_pattern(&file, pattern) {
         // Skip "IKCFG_ST" and the rest is config_data.gz
         dump_config_gzip(&mut file, offset + "IKCFG_ST".len());
     } else {
