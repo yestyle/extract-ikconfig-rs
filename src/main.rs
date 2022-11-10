@@ -1,5 +1,5 @@
 use clap::{Arg, Command};
-use flate2::read::GzDecoder;
+use flate2::bufread::GzDecoder;
 use grep_matcher::Matcher;
 use grep_regex::RegexMatcher;
 use grep_searcher::{Searcher, Sink, SinkMatch};
@@ -54,16 +54,8 @@ fn dump_config_gzip(file: &mut File, offset: usize) {
         return;
     }
 
-    let mut buf = Vec::new();
-    let size = file.read_to_end(&mut buf).unwrap_or_default();
-    if size == 0 {
-        eprintln!("Failed to read file");
-        return;
-    }
-
-    let mut gz = GzDecoder::new(BufReader::new(&buf[..]));
-    const CHUNK: usize = 1024;
-    let mut bytes = vec![0; CHUNK];
+    let mut gz = GzDecoder::new(BufReader::new(file));
+    let mut bytes = vec![0; 1024];
     loop {
         match gz.read(&mut bytes) {
             Ok(read) => {
