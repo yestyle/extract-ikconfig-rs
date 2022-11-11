@@ -26,7 +26,7 @@ where
     }
 }
 
-fn search_pattern(file: &File, pattern: &str) -> Result<usize, io::Error> {
+fn search_pattern(file: &File, pattern: &str) -> Result<u64, io::Error> {
     let matcher = if let Ok(matcher) = RegexMatcher::new(pattern) {
         matcher
     } else {
@@ -47,14 +47,14 @@ fn search_pattern(file: &File, pattern: &str) -> Result<usize, io::Error> {
     )?;
 
     if offset != 0 {
-        Ok(offset as usize)
+        Ok(offset)
     } else {
         Err(io::Error::from(ErrorKind::NotFound))
     }
 }
 
-fn dump_config_gzip(file: &mut File, offset: usize) {
-    if file.seek(SeekFrom::Start(offset as u64)).is_err() {
+fn dump_config_gzip(file: &mut File, offset: u64) {
+    if file.seek(SeekFrom::Start(offset)).is_err() {
         eprintln!("Failed to seek to offset {offset}");
         return;
     }
@@ -106,7 +106,7 @@ fn main() {
 
     if let Ok(offset) = search_pattern(&file, pattern) {
         // Skip "IKCFG_ST" and the rest is config_data.gz
-        dump_config_gzip(&mut file, offset + "IKCFG_ST".len());
+        dump_config_gzip(&mut file, offset + "IKCFG_ST".len() as u64);
     } else {
         eprintln!(
             "In-kernel config not found. Please ensure the kernel is compiled with CONFIG_IKCONFIG"
