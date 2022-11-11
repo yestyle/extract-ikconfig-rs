@@ -26,8 +26,13 @@ where
     }
 }
 
-fn search_pattern(file: &File, pattern: &[u8]) -> Result<usize, io::Error> {
-    let matcher = RegexMatcher::new(from_utf8(pattern).unwrap()).unwrap();
+fn search_pattern(file: &File, pattern: &str) -> Result<usize, io::Error> {
+    let matcher = if let Ok(matcher) = RegexMatcher::new(pattern) {
+        matcher
+    } else {
+        return Err(io::Error::from(ErrorKind::InvalidInput));
+    };
+
     let mut offset = 0;
     Searcher::new().search_file(
         &matcher,
@@ -62,7 +67,13 @@ fn dump_config_gzip(file: &mut File, offset: usize) {
                 if read == 0 {
                     return;
                 }
-                print!("{}", from_utf8(&bytes[..read]).unwrap());
+                match from_utf8(&bytes[..read]) {
+                    Ok(config) => print!("{config}"),
+                    Err(err) => {
+                        eprintln!("Not UTF-8 content: {err}");
+                        return;
+                    }
+                }
             }
             Err(err) => {
                 eprintln!("Failed to deflate the file: {err}");
@@ -91,7 +102,7 @@ fn main() {
 
     // search pattern:
     // IKCFG_ST is the start flag of in-kernel config
-    let pattern = b"IKCFG_ST";
+    let pattern = r"IKCFG_ST";
 
     if let Ok(offset) = search_pattern(&file, pattern) {
         // Skip "IKCFG_ST" and the rest is config_data.gz
