@@ -134,13 +134,14 @@ fn main() {
     // IKCFG_ST is the start flag of in-kernel config
     let pattern = r"IKCFG_ST";
 
-    if let Ok(offset) = search_pattern(&file, pattern) {
-        // Skip "IKCFG_ST" and the rest is config_data.gz
-        dump_config_gzip(&mut file, offset + "IKCFG_ST".len() as u64);
-    } else {
-        eprintln!(
-            "In-kernel config not found. Please ensure the kernel is compiled with CONFIG_IKCONFIG"
-        );
+    match search_pattern(&file, pattern) {
+        Ok(offset) => {
+            // Skip "IKCFG_ST" and the rest is config_data.gz
+            dump_config_gzip(&mut file, offset + "IKCFG_ST".len() as u64);
+        }
+        Err(err) => {
+            eprintln!("In-kernel config not found. Please ensure the kernel is compiled with CONFIG_IKCONFIG: {err}");
+        }
     }
 }
 
