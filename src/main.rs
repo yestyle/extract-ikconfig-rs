@@ -9,6 +9,36 @@ use std::{
     str::from_utf8,
 };
 
+#[allow(dead_code)]
+fn scan_term(file: &mut File, pattern: &str) -> Result<usize, io::Error> {
+    let filelen = file.metadata()?.len();
+    let mut start = 0;
+    let mut offset = 0;
+    for b in file.bytes() {
+        if let Ok(b) = b {
+            // loop will break when start is equal to pattern.len(),
+            // so it's safe to unwrap
+            if b == *pattern.as_bytes().get(start).unwrap() {
+                start += 1;
+                if start == pattern.len() {
+                    // let offset point to the start of the pattern
+                    offset -= start - 1;
+                    break;
+                }
+            } else {
+                start = 0;
+            }
+        }
+        offset += 1;
+    }
+
+    if offset < filelen as usize - pattern.len() {
+        Ok(offset)
+    } else {
+        Err(io::Error::from(ErrorKind::NotFound))
+    }
+}
+
 struct Offset<F>(F)
 where
     F: FnMut(u64, &[u8]) -> Result<bool, io::Error>;
@@ -110,6 +140,32 @@ fn main() {
     } else {
         eprintln!(
             "In-kernel config not found. Please ensure the kernel is compiled with CONFIG_IKCONFIG"
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::prelude::*;
+    use std::fs::File;
+
+    #[test]
+    fn compare_searching_methods() {
+        let pattern = r"IKCFG_ST";
+        let mut file = File::open("tests/data/vmlinux").unwrap();
+
+        let start = Utc::now();
+        scan_term(&mut file, pattern).unwrap();
+        println!("scan_term: {} ms", (Utc::now() - start).num_milliseconds());
+
+        file.seek(SeekFrom::Start(0)).ok();
+
+        let start = Utc::now();
+        search_pattern(&mut file, pattern).unwrap();
+        println!(
+            "search_pattern: {} ms",
+            (Utc::now() - start).num_milliseconds()
         );
     }
 }

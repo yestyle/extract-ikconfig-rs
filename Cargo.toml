@@ -11,3 +11,6 @@ flate2 = "1.0.24"
 grep-matcher = "0.1.5"
 grep-regex = "0.1.10"
 grep-searcher = "0.1.10"
+
+[dev-dependencies]
+chrono = "0.4.22"
