@@ -16,12 +16,6 @@ fn test_output_has_ikconfig_enabled() {
         .contains("CONFIG_IKCONFIG=y"));
 }
 
-// Release version of extract-ikconfig-rs will beat the shell script version
-// but not the debug version (possibly due to debug info loading),
-// so run the following command to see the result:
-// ```shell
-// cargo test --release compare_to_shell_script -- --show-output
-// ```
 #[test]
 fn compare_to_shell_script() {
     let start = Utc::now();

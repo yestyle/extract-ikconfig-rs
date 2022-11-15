@@ -5,6 +5,18 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = "symbols"
+
+[profile.dev]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = "symbols"
+
 [dependencies]
 clap = "4.0.19"
 flate2 = "1.0.24"
