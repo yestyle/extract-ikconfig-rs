@@ -10,10 +10,10 @@ use std::{
 };
 
 #[allow(dead_code)]
-fn scan_term(file: &mut File, pattern: &str) -> Result<usize, io::Error> {
+fn scan_term(file: &mut File, pattern: &str) -> Result<u64, io::Error> {
     let filelen = file.metadata()?.len();
     let mut start = 0;
-    let mut offset = 0;
+    let mut offset: u64 = 0;
     for b in file.bytes() {
         if let Ok(b) = b {
             // loop will break when start is equal to pattern.len(),
@@ -22,7 +22,7 @@ fn scan_term(file: &mut File, pattern: &str) -> Result<usize, io::Error> {
                 start += 1;
                 if start == pattern.len() {
                     // let offset point to the start of the pattern
-                    offset -= start - 1;
+                    offset -= start as u64 - 1;
                     break;
                 }
             } else {
@@ -32,7 +32,7 @@ fn scan_term(file: &mut File, pattern: &str) -> Result<usize, io::Error> {
         offset += 1;
     }
 
-    if offset < filelen as usize - pattern.len() {
+    if offset < filelen - pattern.len() as u64 {
         Ok(offset)
     } else {
         Err(io::Error::from(ErrorKind::NotFound))
