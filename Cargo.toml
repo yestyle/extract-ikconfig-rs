@@ -13,4 +13,5 @@ grep-regex = "0.1.10"
 grep-searcher = "0.1.10"
 
 [dev-dependencies]
+assert_cmd = "2.0.6"
 chrono = "0.4.22"
