@@ -198,6 +198,34 @@ mod tests {
 
     const PATH_VMLINUX: &str = "tests/data/vmlinux";
     const IKCFG_ST_FLAG_BYTES: &[u8] = b"IKCFG_ST\x1f\x8b\x08";
+    const FLAG_OFFSET_VMLINUX: u64 = 12645664;
+
+    #[test]
+    fn test_search_bytes() {
+        let mut file = File::open(PATH_VMLINUX).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, IKCFG_ST_FLAG_BYTES).unwrap(),
+            FLAG_OFFSET_VMLINUX
+        );
+    }
+
+    #[test]
+    fn test_search_ripgrep() {
+        let mut file = File::open(PATH_VMLINUX).unwrap();
+        assert_eq!(
+            search_ripgrep(&mut file, IKCFG_ST_FLAG_STR).unwrap(),
+            FLAG_OFFSET_VMLINUX
+        );
+    }
+
+    #[test]
+    fn test_search_regex() {
+        let mut file = File::open(PATH_VMLINUX).unwrap();
+        assert_eq!(
+            search_regex(&mut file, IKCFG_ST_FLAG_STR).unwrap(),
+            FLAG_OFFSET_VMLINUX
+        );
+    }
 
     #[test]
     fn compare_searching_methods() {
