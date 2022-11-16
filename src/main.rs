@@ -15,6 +15,15 @@ use std::{
 // "1f 8b 08" is the first 3 bytes of gzip header
 const IKCFG_ST_FLAG_STR: &str = r"IKCFG_ST\x1f\x8b\x08";
 
+// search patterns for compressed header
+const MAGIC_NUMBER_GZIP: &str = r"\x1f\x8b\x08";
+const MAGIC_NUMBER_7ZXZ: &str = r"\xfd7zXZ\x00";
+const MAGIC_NUMBER_BZIP: &str = r"BZh";
+const MAGIC_NUMBER_LZMA: &str = r"\x5d\x00\x00\x00";
+const MAGIC_NUMBER_LZOP: &str = r"\x89\x4c\x5a";
+const MAGIC_NUMBER_LZ4: &str = r"\x02\x21\x4c\x18";
+const MAGIC_NUMBER_ZSTD: &str = r"\x28\xb5\x2f\xfd";
+
 #[allow(dead_code)]
 fn search_bytes(file: &mut File, pattern: &[u8]) -> Result<u64, io::Error> {
     let filelen = file.metadata()?.len();
@@ -131,11 +140,8 @@ fn search_regex(file: &File, pattern: &str) -> Result<u64, io::Error> {
     Err(io::Error::from(ErrorKind::NotFound))
 }
 
-fn dump_config_gzip(file: &mut File, offset: u64) {
-    if file.seek(SeekFrom::Start(offset)).is_err() {
-        eprintln!("Failed to seek to offset {offset}");
-        return;
-    }
+fn dump_config_gzip(file: &mut File, offset: u64) -> Result<(), io::Error> {
+    file.seek(SeekFrom::Start(offset))?;
 
     let mut gz = GzDecoder::new(BufReader::new(file));
     let mut bytes = vec![0; 1024];
@@ -143,22 +149,69 @@ fn dump_config_gzip(file: &mut File, offset: u64) {
         match gz.read(&mut bytes) {
             Ok(read) => {
                 if read == 0 {
-                    return;
+                    return Ok(());
                 }
                 match from_utf8(&bytes[..read]) {
                     Ok(config) => print!("{config}"),
-                    Err(err) => {
-                        eprintln!("Not UTF-8 content: {err}");
-                        return;
+                    Err(_) => {
+                        return Err(io::Error::from(ErrorKind::InvalidData));
                     }
                 }
             }
             Err(err) => {
-                eprintln!("Failed to deflate the file: {err}");
-                return;
+                return Err(err);
             }
         };
     }
+}
+
+fn dump_config(file: &mut File) -> Result<(), io::Error> {
+    search_regex(file, IKCFG_ST_FLAG_STR)
+        .and_then(|offset| dump_config_gzip(file, offset + "IKCFG_ST".len() as u64))
+}
+
+fn gunzip(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
+    Err(io::Error::from(ErrorKind::NotFound))
+}
+
+fn unxz(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
+    Err(io::Error::from(ErrorKind::NotFound))
+}
+
+fn bunzip2(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
+    Err(io::Error::from(ErrorKind::NotFound))
+}
+
+fn unlzma(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
+    Err(io::Error::from(ErrorKind::NotFound))
+}
+
+fn lzop(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
+    Err(io::Error::from(ErrorKind::NotFound))
+}
+
+fn lz4(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
+    Err(io::Error::from(ErrorKind::NotFound))
+}
+
+fn unzstd(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
+    Err(io::Error::from(ErrorKind::NotFound))
+}
+
+fn try_decompress<F>(file: &mut File, pattern: &str, decompress: F) -> Result<(), io::Error>
+where
+    F: Fn(&File, &mut File) -> Result<(), io::Error>,
+{
+    file.seek(SeekFrom::Start(0))?;
+
+    search_regex(file, pattern).and_then(|offset| {
+        // decompress file[offset..] to tempfile
+        file.seek(SeekFrom::Start(offset))?;
+        let mut dst = tempfile::tempfile()?;
+        decompress(file, &mut dst)?;
+
+        dump_config(&mut dst)
+    })
 }
 
 fn main() {
@@ -178,14 +231,16 @@ fn main() {
         }
     };
 
-    match search_regex(&file, IKCFG_ST_FLAG_STR) {
-        Ok(offset) => {
-            // Skip "IKCFG_ST" and the rest is config_data.gz
-            dump_config_gzip(&mut file, offset + "IKCFG_ST".len() as u64);
-        }
-        Err(err) => {
-            eprintln!("In-kernel config not found. Please ensure the kernel is compiled with CONFIG_IKCONFIG: {err}");
-        }
+    if let Err(err) = dump_config(&mut file)
+        .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_GZIP, gunzip))
+        .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_7ZXZ, unxz))
+        .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_BZIP, bunzip2))
+        .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZMA, unlzma))
+        .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZOP, lzop))
+        .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZ4, lz4))
+        .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_ZSTD, unzstd))
+    {
+        eprintln!("Failed to extra in-kernel config: {err}");
     }
 }
 
