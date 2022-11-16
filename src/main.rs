@@ -1,7 +1,7 @@
 use clap::{Arg, Command};
 use flate2::bufread::GzDecoder;
 use grep_matcher::Matcher;
-use grep_regex::RegexMatcher;
+use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{Searcher, Sink, SinkMatch};
 use regex::bytes::RegexBuilder;
 use std::{
@@ -11,7 +11,7 @@ use std::{
 };
 
 #[allow(dead_code)]
-fn scan_term(file: &mut File, pattern: &str) -> Result<u64, io::Error> {
+fn search_bytes(file: &mut File, pattern: &[u8]) -> Result<u64, io::Error> {
     let filelen = file.metadata()?.len();
     let mut start = 0;
     let mut offset: u64 = 0;
@@ -19,7 +19,7 @@ fn scan_term(file: &mut File, pattern: &str) -> Result<u64, io::Error> {
         if let Ok(b) = b {
             // loop will break when start is equal to pattern.len(),
             // so it's safe to unwrap
-            if b == *pattern.as_bytes().get(start).unwrap() {
+            if b == pattern[start] {
                 start += 1;
                 if start == pattern.len() {
                     // let offset point to the start of the pattern
@@ -57,8 +57,10 @@ where
     }
 }
 
-fn search_pattern(file: &File, pattern: &str) -> Result<u64, io::Error> {
-    let matcher = if let Ok(matcher) = RegexMatcher::new(pattern) {
+#[allow(dead_code)]
+fn search_ripgrep(file: &File, pattern: &str) -> Result<u64, io::Error> {
+    // Disable Unicode (\u flag) to search arbitrary (non-UTF-8) bytes
+    let matcher = if let Ok(matcher) = RegexMatcherBuilder::new().unicode(false).build(pattern) {
         matcher
     } else {
         return Err(io::Error::from(ErrorKind::InvalidInput));
@@ -196,19 +198,35 @@ mod tests {
 
     #[test]
     fn compare_searching_methods() {
-        let pattern = r"IKCFG_ST";
         let mut file = File::open("tests/data/vmlinux").unwrap();
 
+        let pattern = b"IKCFG_ST\x1f\x8b\x08";
         let start = Utc::now();
-        scan_term(&mut file, pattern).unwrap();
-        println!("scan_term: {} ms", (Utc::now() - start).num_milliseconds());
+        search_bytes(&mut file, pattern).unwrap();
+        println!(
+            "{:15}: {:-5} ms",
+            "search_bytes",
+            (Utc::now() - start).num_milliseconds()
+        );
+
+        let pattern = r"IKCFG_ST\x1f\x8b\x08";
+        file.seek(SeekFrom::Start(0)).ok();
+
+        let start = Utc::now();
+        search_ripgrep(&mut file, pattern).unwrap();
+        println!(
+            "{:15}: {:-5} ms",
+            "search_ripgrep",
+            (Utc::now() - start).num_milliseconds()
+        );
 
         file.seek(SeekFrom::Start(0)).ok();
 
         let start = Utc::now();
-        search_pattern(&mut file, pattern).unwrap();
+        search_regex(&mut file, pattern).unwrap();
         println!(
-            "search_pattern: {} ms",
+            "{:15}: {:-5} ms",
+            "search_regex",
             (Utc::now() - start).num_milliseconds()
         );
     }
