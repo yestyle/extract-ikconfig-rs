@@ -263,6 +263,7 @@ dependencies = [
  "grep-matcher",
  "grep-regex",
  "grep-searcher",
+ "regex",
 ]
 
 [[package]]

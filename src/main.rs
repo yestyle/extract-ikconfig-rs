@@ -3,6 +3,7 @@ use flate2::bufread::GzDecoder;
 use grep_matcher::Matcher;
 use grep_regex::RegexMatcher;
 use grep_searcher::{Searcher, Sink, SinkMatch};
+use regex::bytes::RegexBuilder;
 use std::{
     fs::File,
     io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom},
@@ -83,6 +84,47 @@ fn search_pattern(file: &File, pattern: &str) -> Result<u64, io::Error> {
     }
 }
 
+#[allow(dead_code)]
+fn search_regex(file: &File, pattern: &str) -> Result<u64, io::Error> {
+    let filelen = file.metadata()?.len() as usize;
+    let mut buff = BufReader::new(file);
+    let mut bytes = vec![0; 1024];
+    let mut offset = 0;
+    // Disable Unicode (\u flag) to search arbitrary (non-UTF-8) bytes
+    let re = if let Ok(re) = RegexBuilder::new(pattern).unicode(false).build() {
+        re
+    } else {
+        return Err(io::Error::from(ErrorKind::InvalidInput));
+    };
+
+    loop {
+        match buff.read(&mut bytes) {
+            Ok(read) => {
+                if read == 0 {
+                    break;
+                }
+                if let Some(m) = re.find(&bytes[..read]) {
+                    offset += m.start();
+                    break;
+                } else {
+                    offset += read;
+                }
+            }
+            Err(err) => {
+                eprintln!("Failed to read file: {err}");
+                return Err(io::Error::from(ErrorKind::InvalidInput));
+            }
+        }
+    }
+
+    if offset < filelen - pattern.len() {
+        Ok(offset as u64)
+    } else {
+        // TODO: search again around the 1KB boundaries
+        Err(io::Error::from(ErrorKind::NotFound))
+    }
+}
+
 fn dump_config_gzip(file: &mut File, offset: u64) {
     if file.seek(SeekFrom::Start(offset)).is_err() {
         eprintln!("Failed to seek to offset {offset}");
@@ -132,9 +174,10 @@ fn main() {
 
     // search pattern:
     // IKCFG_ST is the start flag of in-kernel config
-    let pattern = r"IKCFG_ST";
+    // "1f 8b 08" is the first 3 bytes of gzip header
+    let pattern = r"IKCFG_ST\x1f\x8b\x08";
 
-    match search_pattern(&file, pattern) {
+    match search_regex(&file, pattern) {
         Ok(offset) => {
             // Skip "IKCFG_ST" and the rest is config_data.gz
             dump_config_gzip(&mut file, offset + "IKCFG_ST".len() as u64);
