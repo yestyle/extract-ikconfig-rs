@@ -92,10 +92,8 @@ fn search_ripgrep(file: &File, pattern: &str) -> Result<u64, io::Error> {
 }
 
 fn search_regex(file: &File, pattern: &str) -> Result<u64, io::Error> {
-    let filelen = file.metadata()?.len() as usize;
     let mut buff = BufReader::new(file);
     let mut bytes = vec![0; 1024];
-    let mut offset = 0;
     // Disable Unicode (\u flag) to search arbitrary (non-UTF-8) bytes
     let re = if let Ok(re) = RegexBuilder::new(pattern).unicode(false).build() {
         re
@@ -109,33 +107,28 @@ fn search_regex(file: &File, pattern: &str) -> Result<u64, io::Error> {
                 if read == 0 {
                     break;
                 }
+                // Note: pattern.len() is the length of the string, not bytes
+                if read < pattern.len() {
+                    // if remaining bytes is shorter than a pattern,
+                    // search again the last length of pattern
+                    buff.seek(SeekFrom::End(pattern.len() as i64))?;
+                    continue;
+                }
                 if let Some(m) = re.find(&bytes[..read]) {
-                    offset += m.start();
-                    break;
+                    return Ok(buff.stream_position().unwrap() - (read - m.start()) as u64);
                 } else {
                     // overlap the search around the chunk boundaries
                     // in case the pattern locates across the boundary
-                    if buff
-                        .seek(SeekFrom::Current(1 - pattern.len() as i64))
-                        .is_err()
-                    {
-                        return Err(io::Error::from(ErrorKind::InvalidInput));
-                    }
-                    offset += read - pattern.len() + 1;
+                    buff.seek(SeekFrom::Current(1 - pattern.len() as i64))?;
                 }
             }
             Err(err) => {
-                eprintln!("Failed to read file: {err}");
-                return Err(io::Error::from(ErrorKind::InvalidInput));
+                return Err(err);
             }
         }
     }
 
-    if offset < filelen - pattern.len() {
-        Ok(offset as u64)
-    } else {
-        Err(io::Error::from(ErrorKind::NotFound))
-    }
+    Err(io::Error::from(ErrorKind::NotFound))
 }
 
 fn dump_config_gzip(file: &mut File, offset: u64) {
