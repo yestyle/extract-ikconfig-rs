@@ -25,7 +25,7 @@ fn compare_to_shell_script() {
         .assert()
         .success();
     println!(
-        "{}: {} ms",
+        "{:20}: {:-5} ms",
         BIN_NAME,
         (Utc::now() - start).num_milliseconds()
     );
@@ -35,7 +35,8 @@ fn compare_to_shell_script() {
         .arg("tests/data/vmlinux")
         .unwrap();
     println!(
-        "extra-ikconfig: {} ms",
+        "{:20}: {:-5} ms",
+        "extract-ikconfig",
         (Utc::now() - start).num_milliseconds()
     );
 }
