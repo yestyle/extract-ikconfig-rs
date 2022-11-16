@@ -1,13 +1,14 @@
 use assert_cmd::Command;
 use chrono::Utc;
 
-const BIN_NAME: &str = env!("CARGO_PKG_NAME");
+const BIN_NAME: &str = env!("CARGO_BIN_EXE_ikconfig");
+const PATH_VMLINUX: &str = "tests/data/vmlinux";
 
 #[test]
 fn test_output_has_ikconfig_enabled() {
     let output = Command::cargo_bin(BIN_NAME)
         .unwrap()
-        .arg("tests/data/vmlinux")
+        .arg(PATH_VMLINUX)
         .output()
         .unwrap();
 
@@ -21,18 +22,18 @@ fn compare_to_shell_script() {
     let start = Utc::now();
     Command::cargo_bin(BIN_NAME)
         .unwrap()
-        .arg("tests/data/vmlinux")
+        .arg(PATH_VMLINUX)
         .assert()
         .success();
     println!(
         "{:20}: {:-5} ms",
-        BIN_NAME,
+        env!("CARGO_PKG_NAME"),
         (Utc::now() - start).num_milliseconds()
     );
 
     let start = Utc::now();
     Command::new("tests/extract-ikconfig")
-        .arg("tests/data/vmlinux")
+        .arg(PATH_VMLINUX)
         .unwrap();
     println!(
         "{:20}: {:-5} ms",
