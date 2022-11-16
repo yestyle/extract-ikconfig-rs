@@ -6,7 +6,7 @@ use grep_searcher::{Searcher, Sink, SinkMatch};
 use regex::bytes::RegexBuilder;
 use std::{
     fs::File,
-    io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom},
+    io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom, Write},
     str::from_utf8,
 };
 
@@ -170,8 +170,31 @@ fn dump_config(file: &mut File) -> Result<(), io::Error> {
         .and_then(|offset| dump_config_gzip(file, offset + "IKCFG_ST".len() as u64))
 }
 
-fn gunzip(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
-    Err(io::Error::from(ErrorKind::NotFound))
+fn gunzip(src: &File, dst: &mut File) -> Result<(), io::Error> {
+    let mut gz = GzDecoder::new(BufReader::new(src));
+    let mut bytes = vec![0; 1024];
+    loop {
+        match gz.read(&mut bytes) {
+            Ok(read) => {
+                if read == 0 {
+                    return Ok(());
+                }
+                match dst.write(&bytes[..read]) {
+                    Ok(written) => {
+                        if written != read {
+                            return Err(io::Error::from(ErrorKind::InvalidData));
+                        }
+                    }
+                    Err(err) => {
+                        return Err(err);
+                    }
+                }
+            }
+            Err(err) => {
+                return Err(err);
+            }
+        };
+    }
 }
 
 fn unxz(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
@@ -312,5 +335,27 @@ mod tests {
             "search_regex",
             (Utc::now() - start).num_milliseconds()
         );
+    }
+
+    fn util_compare_to_config(target: &mut File) {
+        target.seek(SeekFrom::Start(0)).unwrap();
+        let mut config = File::open("tests/data/config").unwrap();
+
+        let mut expected = String::new();
+        let mut decompressed = String::new();
+        assert_eq!(
+            config.read_to_string(&mut expected).unwrap(),
+            target.read_to_string(&mut decompressed).unwrap()
+        );
+        assert_eq!(expected, decompressed);
+    }
+
+    #[test]
+    fn test_decompress_gunzip() {
+        let src = File::open("tests/data/config.gz").unwrap();
+        let mut dst = tempfile::tempfile().unwrap();
+
+        assert!(gunzip(&src, &mut dst).is_ok());
+        util_compare_to_config(&mut dst);
     }
 }
