@@ -10,6 +10,11 @@ use std::{
     str::from_utf8,
 };
 
+// search pattern:
+// IKCFG_ST is the start flag of in-kernel config
+// "1f 8b 08" is the first 3 bytes of gzip header
+const IKCFG_ST_FLAG_STR: &str = r"IKCFG_ST\x1f\x8b\x08";
+
 #[allow(dead_code)]
 fn search_bytes(file: &mut File, pattern: &[u8]) -> Result<u64, io::Error> {
     let filelen = file.metadata()?.len();
@@ -174,12 +179,7 @@ fn main() {
         }
     };
 
-    // search pattern:
-    // IKCFG_ST is the start flag of in-kernel config
-    // "1f 8b 08" is the first 3 bytes of gzip header
-    let pattern = r"IKCFG_ST\x1f\x8b\x08";
-
-    match search_regex(&file, pattern) {
+    match search_regex(&file, IKCFG_ST_FLAG_STR) {
         Ok(offset) => {
             // Skip "IKCFG_ST" and the rest is config_data.gz
             dump_config_gzip(&mut file, offset + "IKCFG_ST".len() as u64);
@@ -196,24 +196,25 @@ mod tests {
     use chrono::prelude::*;
     use std::fs::File;
 
+    const PATH_VMLINUX: &str = "tests/data/vmlinux";
+    const IKCFG_ST_FLAG_BYTES: &[u8] = b"IKCFG_ST\x1f\x8b\x08";
+
     #[test]
     fn compare_searching_methods() {
-        let mut file = File::open("tests/data/vmlinux").unwrap();
+        let mut file = File::open(PATH_VMLINUX).unwrap();
 
-        let pattern = b"IKCFG_ST\x1f\x8b\x08";
         let start = Utc::now();
-        search_bytes(&mut file, pattern).unwrap();
+        search_bytes(&mut file, IKCFG_ST_FLAG_BYTES).unwrap();
         println!(
             "{:15}: {:-5} ms",
             "search_bytes",
             (Utc::now() - start).num_milliseconds()
         );
 
-        let pattern = r"IKCFG_ST\x1f\x8b\x08";
         file.seek(SeekFrom::Start(0)).ok();
 
         let start = Utc::now();
-        search_ripgrep(&mut file, pattern).unwrap();
+        search_ripgrep(&mut file, IKCFG_ST_FLAG_STR).unwrap();
         println!(
             "{:15}: {:-5} ms",
             "search_ripgrep",
@@ -223,7 +224,7 @@ mod tests {
         file.seek(SeekFrom::Start(0)).ok();
 
         let start = Utc::now();
-        search_regex(&mut file, pattern).unwrap();
+        search_regex(&mut file, IKCFG_ST_FLAG_STR).unwrap();
         println!(
             "{:15}: {:-5} ms",
             "search_regex",
