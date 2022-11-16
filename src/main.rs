@@ -91,7 +91,6 @@ fn search_ripgrep(file: &File, pattern: &str) -> Result<u64, io::Error> {
     }
 }
 
-#[allow(dead_code)]
 fn search_regex(file: &File, pattern: &str) -> Result<u64, io::Error> {
     let filelen = file.metadata()?.len() as usize;
     let mut buff = BufReader::new(file);
@@ -114,7 +113,15 @@ fn search_regex(file: &File, pattern: &str) -> Result<u64, io::Error> {
                     offset += m.start();
                     break;
                 } else {
-                    offset += read;
+                    // overlap the search around the chunk boundaries
+                    // in case the pattern locates across the boundary
+                    if buff
+                        .seek(SeekFrom::Current(1 - pattern.len() as i64))
+                        .is_err()
+                    {
+                        return Err(io::Error::from(ErrorKind::InvalidInput));
+                    }
+                    offset += read - pattern.len() + 1;
                 }
             }
             Err(err) => {
@@ -127,7 +134,6 @@ fn search_regex(file: &File, pattern: &str) -> Result<u64, io::Error> {
     if offset < filelen - pattern.len() {
         Ok(offset as u64)
     } else {
-        // TODO: search again around the 1KB boundaries
         Err(io::Error::from(ErrorKind::NotFound))
     }
 }
