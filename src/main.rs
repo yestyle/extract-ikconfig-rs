@@ -308,7 +308,7 @@ mod tests {
 
     const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
     const MAGIC_NUMBER_ZSTD: &[u8] = b"\x28\xb5\x2f\xfd";
-    const PATTERN_OFFSET_VMLINUX_ZSTD: u64 = 17613;
+    const PATTERN_OFFSET_VMLINUX_ZSTD: u64 = 16063;
 
     #[test]
     fn test_search_bytes() {
