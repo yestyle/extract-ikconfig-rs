@@ -306,6 +306,10 @@ mod tests {
     const IKCFG_ST_FLAG_BYTES: &[u8] = b"IKCFG_ST\x1f\x8b\x08";
     const PATTERN_OFFSET_VMLINUX_RAW: u64 = 12645664;
 
+    const PATH_VMLINUX_GZIP: &str = "tests/data/vmlinux.gz";
+    const MAGIC_NUMBER_GZIP: &[u8] = b"\x1f\x8b\x08";
+    const PATTERN_OFFSET_VMLINUX_GZIP: u64 = 16063;
+
     const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
     const MAGIC_NUMBER_ZSTD: &[u8] = b"\x28\xb5\x2f\xfd";
     const PATTERN_OFFSET_VMLINUX_ZSTD: u64 = 16063;
@@ -316,6 +320,12 @@ mod tests {
         assert_eq!(
             search_bytes(&mut file, IKCFG_ST_FLAG_BYTES).unwrap(),
             PATTERN_OFFSET_VMLINUX_RAW
+        );
+
+        let mut file = File::open(PATH_VMLINUX_GZIP).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, MAGIC_NUMBER_GZIP).unwrap(),
+            PATTERN_OFFSET_VMLINUX_GZIP
         );
 
         let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
@@ -331,6 +341,12 @@ mod tests {
         assert_eq!(
             search_ripgrep(&mut file, IKCFG_ST_FLAG_STR).unwrap(),
             PATTERN_OFFSET_VMLINUX_RAW
+        );
+
+        let mut file = File::open(PATH_VMLINUX_GZIP).unwrap();
+        assert_eq!(
+            search_ripgrep(&mut file, super::MAGIC_NUMBER_GZIP).unwrap(),
+            PATTERN_OFFSET_VMLINUX_GZIP
         );
 
         // TODO: fix this test case
@@ -349,6 +365,12 @@ mod tests {
         assert_eq!(
             search_regex(&mut file, IKCFG_ST_FLAG_STR).unwrap(),
             PATTERN_OFFSET_VMLINUX_RAW
+        );
+
+        let mut file = File::open(PATH_VMLINUX_GZIP).unwrap();
+        assert_eq!(
+            search_regex(&mut file, super::MAGIC_NUMBER_GZIP).unwrap(),
+            PATTERN_OFFSET_VMLINUX_GZIP
         );
 
         let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
@@ -381,6 +403,36 @@ mod tests {
 
         let start = Utc::now();
         search_regex(&mut file, IKCFG_ST_FLAG_STR).unwrap();
+        println!(
+            "{:15}: {:-10} us",
+            "search_regex",
+            (Utc::now() - start).num_microseconds().unwrap()
+        );
+    }
+
+    #[test]
+    fn compare_searching_vmlinux_gzip() {
+        println!("Searching {}", PATH_VMLINUX_GZIP);
+        let mut file = File::open(PATH_VMLINUX_GZIP).unwrap();
+
+        let start = Utc::now();
+        search_bytes(&mut file, MAGIC_NUMBER_GZIP).unwrap();
+        println!(
+            "{:15}: {:-10} us",
+            "search_bytes",
+            (Utc::now() - start).num_microseconds().unwrap()
+        );
+
+        let start = Utc::now();
+        search_ripgrep(&mut file, super::MAGIC_NUMBER_GZIP).unwrap();
+        println!(
+            "{:15}: {:-10} us",
+            "search_ripgrep",
+            (Utc::now() - start).num_microseconds().unwrap()
+        );
+
+        let start = Utc::now();
+        search_regex(&mut file, super::MAGIC_NUMBER_GZIP).unwrap();
         println!(
             "{:15}: {:-10} us",
             "search_regex",
