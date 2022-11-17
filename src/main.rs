@@ -301,66 +301,66 @@ mod tests {
     use chrono::prelude::*;
     use std::fs::File;
 
-    const PATH_VMLINUX: &str = "tests/data/vmlinux";
+    const PATH_VMLINUX_GZIP: &str = "tests/data/vmlinux.gz";
     const IKCFG_ST_FLAG_BYTES: &[u8] = b"IKCFG_ST\x1f\x8b\x08";
-    const FLAG_OFFSET_VMLINUX: u64 = 12645664;
+    const PATTERN_OFFSET_VMLINUX_GZIP: u64 = 12645664;
 
-    const PATH_VMLINUZ: &str = "tests/data/vmlinuz-linux";
+    const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
     const MAGIC_NUMBER_ZSTD: &[u8] = b"\x28\xb5\x2f\xfd";
-    const PATTERN_OFFSET_VMLINUZ: u64 = 17613;
+    const PATTERN_OFFSET_VMLINUX_ZSTD: u64 = 17613;
 
     #[test]
     fn test_search_bytes() {
-        let mut file = File::open(PATH_VMLINUX).unwrap();
+        let mut file = File::open(PATH_VMLINUX_GZIP).unwrap();
         assert_eq!(
             search_bytes(&mut file, IKCFG_ST_FLAG_BYTES).unwrap(),
-            FLAG_OFFSET_VMLINUX
+            PATTERN_OFFSET_VMLINUX_GZIP
         );
 
-        let mut file = File::open(PATH_VMLINUZ).unwrap();
+        let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
         assert_eq!(
             search_bytes(&mut file, MAGIC_NUMBER_ZSTD).unwrap(),
-            PATTERN_OFFSET_VMLINUZ
+            PATTERN_OFFSET_VMLINUX_ZSTD
         );
     }
 
     #[test]
     fn test_search_ripgrep() {
-        let mut file = File::open(PATH_VMLINUX).unwrap();
+        let mut file = File::open(PATH_VMLINUX_GZIP).unwrap();
         assert_eq!(
             search_ripgrep(&mut file, IKCFG_ST_FLAG_STR).unwrap(),
-            FLAG_OFFSET_VMLINUX
+            PATTERN_OFFSET_VMLINUX_GZIP
         );
 
         // TODO: fix this test case
         // There are multiple matches at offset 17613, 10991505, 10991721,
         // but search_ripgrep() misses the first match but catches the second.
-        // let mut file = File::open(PATH_VMLINUZ).unwrap();
+        // let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
         // assert_eq!(
         //     search_ripgrep(&mut file, super::MAGIC_NUMBER_ZSTD).unwrap(),
-        //     PATTERN_OFFSET_VMLINUZ
+        //     PATTERN_OFFSET_VMLINUX_ZSTD
         // );
     }
 
     #[test]
     fn test_search_regex() {
-        let mut file = File::open(PATH_VMLINUX).unwrap();
+        let mut file = File::open(PATH_VMLINUX_GZIP).unwrap();
         assert_eq!(
             search_regex(&mut file, IKCFG_ST_FLAG_STR).unwrap(),
-            FLAG_OFFSET_VMLINUX
+            PATTERN_OFFSET_VMLINUX_GZIP
         );
 
-        let mut file = File::open(PATH_VMLINUZ).unwrap();
+        let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
         assert_eq!(
             search_regex(&mut file, super::MAGIC_NUMBER_ZSTD).unwrap(),
-            PATTERN_OFFSET_VMLINUZ
+            PATTERN_OFFSET_VMLINUX_ZSTD
         );
     }
 
     #[test]
-    fn compare_searching_vmlinux() {
-        println!("Searching {}", PATH_VMLINUX);
-        let mut file = File::open(PATH_VMLINUX).unwrap();
+    fn compare_searching_vmlinux_gzip() {
+        println!("Searching {}", PATH_VMLINUX_GZIP);
+        let mut file = File::open(PATH_VMLINUX_GZIP).unwrap();
 
         let start = Utc::now();
         search_bytes(&mut file, IKCFG_ST_FLAG_BYTES).unwrap();
@@ -392,9 +392,9 @@ mod tests {
     }
 
     #[test]
-    fn compare_searching_vmlinuz() {
-        println!("Searching {}", PATH_VMLINUZ);
-        let mut file = File::open(PATH_VMLINUZ).unwrap();
+    fn compare_searching_vmlinux_zstd() {
+        println!("Searching {}", PATH_VMLINUX_ZSTD);
+        let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
 
         let start = Utc::now();
         search_bytes(&mut file, MAGIC_NUMBER_ZSTD).unwrap();

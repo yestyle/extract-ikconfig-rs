@@ -2,42 +2,42 @@ use assert_cmd::Command;
 use chrono::Utc;
 
 const BIN_NAME: &str = env!("CARGO_BIN_EXE_ikconfig");
-const PATH_VMLINUX: &str = "tests/data/vmlinux";
-const PATH_VMLINUZ: &str = "tests/data/vmlinuz-linux";
+const PATH_VMLINUX_GZIP: &str = "tests/data/vmlinux.gz";
+const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
 
 #[test]
-fn test_extract_vmlinux() {
+fn test_extract_vmlinux_gzip() {
     let output = Command::cargo_bin(BIN_NAME)
         .unwrap()
-        .arg(PATH_VMLINUX)
+        .arg(PATH_VMLINUX_GZIP)
         .output()
         .unwrap();
 
-    assert!(std::str::from_utf8(&output.stdout)
-        .unwrap()
-        .contains("CONFIG_IKCONFIG=y"));
+    let configs = std::str::from_utf8(&output.stdout).unwrap();
+    assert!(configs.contains("CONFIG_IKCONFIG=y"));
+    assert!(configs.contains("CONFIG_KERNEL_GZIP=y"));
 }
 
 #[test]
-fn test_extract_vmlinuz() {
+fn test_extract_vmlinux_zstd() {
     let output = Command::cargo_bin(BIN_NAME)
         .unwrap()
-        .arg(PATH_VMLINUZ)
+        .arg(PATH_VMLINUX_ZSTD)
         .output()
         .unwrap();
 
-    assert!(std::str::from_utf8(&output.stdout)
-        .unwrap()
-        .contains("CONFIG_IKCONFIG=y"));
+    let configs = std::str::from_utf8(&output.stdout).unwrap();
+    assert!(configs.contains("CONFIG_IKCONFIG=y"));
+    assert!(configs.contains("CONFIG_KERNEL_ZSTD=y"));
 }
 
 #[test]
-fn compare_to_shell_script_vmlinux() {
-    println!("Extracting {}", PATH_VMLINUX);
+fn compare_to_shell_script_vmlinux_gzip() {
+    println!("Extracting {}", PATH_VMLINUX_GZIP);
     let start = Utc::now();
     Command::cargo_bin(BIN_NAME)
         .unwrap()
-        .arg(PATH_VMLINUX)
+        .arg(PATH_VMLINUX_GZIP)
         .assert()
         .success();
     println!(
@@ -48,7 +48,7 @@ fn compare_to_shell_script_vmlinux() {
 
     let start = Utc::now();
     Command::new("tests/extract-ikconfig")
-        .arg(PATH_VMLINUX)
+        .arg(PATH_VMLINUX_GZIP)
         .unwrap();
     println!(
         "{:20}: {:-10} us",
@@ -58,12 +58,12 @@ fn compare_to_shell_script_vmlinux() {
 }
 
 #[test]
-fn compare_to_shell_script_vmlinuz() {
-    println!("Extracting {}", PATH_VMLINUZ);
+fn compare_to_shell_script_vmlinux_zstd() {
+    println!("Extracting {}", PATH_VMLINUX_ZSTD);
     let start = Utc::now();
     Command::cargo_bin(BIN_NAME)
         .unwrap()
-        .arg(PATH_VMLINUZ)
+        .arg(PATH_VMLINUX_ZSTD)
         .assert()
         .success();
     println!(
@@ -74,7 +74,7 @@ fn compare_to_shell_script_vmlinuz() {
 
     let start = Utc::now();
     Command::new("tests/extract-ikconfig")
-        .arg(PATH_VMLINUZ)
+        .arg(PATH_VMLINUX_ZSTD)
         .unwrap();
     println!(
         "{:20}: {:-10} us",
