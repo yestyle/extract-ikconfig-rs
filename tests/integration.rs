@@ -2,14 +2,14 @@ use assert_cmd::Command;
 use chrono::Utc;
 
 const BIN_NAME: &str = env!("CARGO_BIN_EXE_ikconfig");
-const PATH_VMLINUX_GZIP: &str = "tests/data/vmlinux.gz";
+const PATH_VMLINUX_RAW: &str = "tests/data/vmlinux";
 const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
 
 #[test]
 fn test_extract_vmlinux_gzip() {
     let output = Command::cargo_bin(BIN_NAME)
         .unwrap()
-        .arg(PATH_VMLINUX_GZIP)
+        .arg(PATH_VMLINUX_RAW)
         .output()
         .unwrap();
 
@@ -32,12 +32,12 @@ fn test_extract_vmlinux_zstd() {
 }
 
 #[test]
-fn compare_to_shell_script_vmlinux_gzip() {
-    println!("Extracting {}", PATH_VMLINUX_GZIP);
+fn compare_to_shell_script_vmlinux_raw() {
+    println!("Extracting {}", PATH_VMLINUX_RAW);
     let start = Utc::now();
     Command::cargo_bin(BIN_NAME)
         .unwrap()
-        .arg(PATH_VMLINUX_GZIP)
+        .arg(PATH_VMLINUX_RAW)
         .assert()
         .success();
     println!(
@@ -48,7 +48,7 @@ fn compare_to_shell_script_vmlinux_gzip() {
 
     let start = Utc::now();
     Command::new("tests/extract-ikconfig")
-        .arg(PATH_VMLINUX_GZIP)
+        .arg(PATH_VMLINUX_RAW)
         .unwrap();
     println!(
         "{:20}: {:-10} us",
