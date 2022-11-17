@@ -30,10 +30,10 @@ fn search_bytes(file: &mut File, pattern: &[u8]) -> Result<u64, io::Error> {
     let filelen = file.metadata()?.len();
     let mut start = 0;
     let mut offset: u64 = 0;
+
+    file.seek(SeekFrom::Start(0))?;
     for b in file.bytes() {
         if let Ok(b) = b {
-            // loop will break when start is equal to pattern.len(),
-            // so it's safe to unwrap
             if b == pattern[start] {
                 start += 1;
                 if start == pattern.len() {
@@ -111,6 +111,7 @@ fn search_regex(file: &File, pattern: &str) -> Result<u64, io::Error> {
         return Err(io::Error::from(ErrorKind::InvalidInput));
     };
 
+    buff.seek(SeekFrom::Start(0))?;
     loop {
         match buff.read(&mut bytes) {
             Ok(read) => {
@@ -142,10 +143,12 @@ fn search_regex(file: &File, pattern: &str) -> Result<u64, io::Error> {
 }
 
 fn dump_config_gzip(file: &mut File, offset: u64) -> Result<(), io::Error> {
+    // seek to offset before passing into GzDecoder
     file.seek(SeekFrom::Start(offset))?;
 
     let mut gz = GzDecoder::new(BufReader::new(file));
     let mut bytes = vec![0; 1024];
+
     loop {
         match gz.read(&mut bytes) {
             Ok(read) => {
@@ -252,8 +255,6 @@ fn try_decompress<F>(file: &mut File, pattern: &str, decompress: F) -> Result<()
 where
     F: Fn(&File, &mut File) -> Result<(), io::Error>,
 {
-    file.seek(SeekFrom::Start(0))?;
-
     search_regex(file, pattern).and_then(|offset| {
         // decompress file[offset..] to tempfile
         file.seek(SeekFrom::Start(offset))?;
@@ -304,12 +305,22 @@ mod tests {
     const IKCFG_ST_FLAG_BYTES: &[u8] = b"IKCFG_ST\x1f\x8b\x08";
     const FLAG_OFFSET_VMLINUX: u64 = 12645664;
 
+    const PATH_VMLINUZ: &str = "tests/data/vmlinuz-linux";
+    const MAGIC_NUMBER_ZSTD: &[u8] = b"\x28\xb5\x2f\xfd";
+    const PATTERN_OFFSET_VMLINUZ: u64 = 17613;
+
     #[test]
     fn test_search_bytes() {
         let mut file = File::open(PATH_VMLINUX).unwrap();
         assert_eq!(
             search_bytes(&mut file, IKCFG_ST_FLAG_BYTES).unwrap(),
             FLAG_OFFSET_VMLINUX
+        );
+
+        let mut file = File::open(PATH_VMLINUZ).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, MAGIC_NUMBER_ZSTD).unwrap(),
+            PATTERN_OFFSET_VMLINUZ
         );
     }
 
@@ -320,6 +331,15 @@ mod tests {
             search_ripgrep(&mut file, IKCFG_ST_FLAG_STR).unwrap(),
             FLAG_OFFSET_VMLINUX
         );
+
+        // TODO: fix this test case
+        // There are multiple matches at offset 17613, 10991505, 10991721,
+        // but search_ripgrep() misses the first match but catches the second.
+        // let mut file = File::open(PATH_VMLINUZ).unwrap();
+        // assert_eq!(
+        //     search_ripgrep(&mut file, super::MAGIC_NUMBER_ZSTD).unwrap(),
+        //     PATTERN_OFFSET_VMLINUZ
+        // );
     }
 
     #[test]
@@ -329,18 +349,25 @@ mod tests {
             search_regex(&mut file, IKCFG_ST_FLAG_STR).unwrap(),
             FLAG_OFFSET_VMLINUX
         );
+
+        let mut file = File::open(PATH_VMLINUZ).unwrap();
+        assert_eq!(
+            search_regex(&mut file, super::MAGIC_NUMBER_ZSTD).unwrap(),
+            PATTERN_OFFSET_VMLINUZ
+        );
     }
 
     #[test]
-    fn compare_searching_methods() {
+    fn compare_searching_vmlinux() {
+        println!("Searching {}", PATH_VMLINUX);
         let mut file = File::open(PATH_VMLINUX).unwrap();
 
         let start = Utc::now();
         search_bytes(&mut file, IKCFG_ST_FLAG_BYTES).unwrap();
         println!(
-            "{:15}: {:-5} ms",
+            "{:15}: {:-10} us",
             "search_bytes",
-            (Utc::now() - start).num_milliseconds()
+            (Utc::now() - start).num_microseconds().unwrap()
         );
 
         file.seek(SeekFrom::Start(0)).ok();
@@ -348,9 +375,9 @@ mod tests {
         let start = Utc::now();
         search_ripgrep(&mut file, IKCFG_ST_FLAG_STR).unwrap();
         println!(
-            "{:15}: {:-5} ms",
+            "{:15}: {:-10} us",
             "search_ripgrep",
-            (Utc::now() - start).num_milliseconds()
+            (Utc::now() - start).num_microseconds().unwrap()
         );
 
         file.seek(SeekFrom::Start(0)).ok();
@@ -358,9 +385,43 @@ mod tests {
         let start = Utc::now();
         search_regex(&mut file, IKCFG_ST_FLAG_STR).unwrap();
         println!(
-            "{:15}: {:-5} ms",
+            "{:15}: {:-10} us",
             "search_regex",
-            (Utc::now() - start).num_milliseconds()
+            (Utc::now() - start).num_microseconds().unwrap()
+        );
+    }
+
+    #[test]
+    fn compare_searching_vmlinuz() {
+        println!("Searching {}", PATH_VMLINUZ);
+        let mut file = File::open(PATH_VMLINUZ).unwrap();
+
+        let start = Utc::now();
+        search_bytes(&mut file, MAGIC_NUMBER_ZSTD).unwrap();
+        println!(
+            "{:15}: {:-10} us",
+            "search_bytes",
+            (Utc::now() - start).num_microseconds().unwrap()
+        );
+
+        file.seek(SeekFrom::Start(0)).ok();
+
+        let start = Utc::now();
+        search_ripgrep(&mut file, super::MAGIC_NUMBER_ZSTD).unwrap();
+        println!(
+            "{:15}: {:-10} us",
+            "search_ripgrep",
+            (Utc::now() - start).num_microseconds().unwrap()
+        );
+
+        file.seek(SeekFrom::Start(0)).ok();
+
+        let start = Utc::now();
+        search_regex(&mut file, super::MAGIC_NUMBER_ZSTD).unwrap();
+        println!(
+            "{:15}: {:-10} us",
+            "search_regex",
+            (Utc::now() - start).num_microseconds().unwrap()
         );
     }
 
