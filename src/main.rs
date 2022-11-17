@@ -9,6 +9,7 @@ use std::{
     io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom, Write},
     str::from_utf8,
 };
+use zstd::stream::read::Decoder;
 
 // search pattern:
 // IKCFG_ST is the start flag of in-kernel config
@@ -217,8 +218,34 @@ fn lz4(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
     Err(io::Error::from(ErrorKind::NotFound))
 }
 
-fn unzstd(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
-    Err(io::Error::from(ErrorKind::NotFound))
+fn unzstd(src: &File, dst: &mut File) -> Result<(), io::Error> {
+    let mut zstd = Decoder::new(src)?;
+    let mut bytes = vec![0; 1024];
+    loop {
+        match zstd.read(&mut bytes) {
+            Ok(read) => {
+                if read == 0 {
+                    return Ok(());
+                }
+                match dst.write(&bytes[..read]) {
+                    Ok(written) => {
+                        if written != read {
+                            return Err(io::Error::from(ErrorKind::InvalidData));
+                        }
+                    }
+                    Err(err) => {
+                        return Err(err);
+                    }
+                }
+            }
+            Err(_) => {
+                // ignore the errors like extract-ikconfig.sh does,
+                // otherwise "Unknown frame descriptor" because there is
+                // excess data at the end of zstd frame.
+                return Ok(());
+            }
+        };
+    }
 }
 
 fn try_decompress<F>(file: &mut File, pattern: &str, decompress: F) -> Result<(), io::Error>
@@ -356,6 +383,15 @@ mod tests {
         let mut dst = tempfile::tempfile().unwrap();
 
         assert!(gunzip(&src, &mut dst).is_ok());
+        util_compare_to_config(&mut dst);
+    }
+
+    #[test]
+    fn test_decompress_zstd() {
+        let src = File::open("tests/data/config.zst").unwrap();
+        let mut dst = tempfile::tempfile().unwrap();
+
+        assert!(unzstd(&src, &mut dst).is_ok());
         util_compare_to_config(&mut dst);
     }
 }
