@@ -73,7 +73,7 @@ where
 }
 
 #[allow(dead_code)]
-fn search_ripgrep(file: &File, pattern: &str) -> Result<u64, io::Error> {
+fn search_ripgrep(file: &mut File, pattern: &str) -> Result<u64, io::Error> {
     // Disable Unicode (\u flag) to search arbitrary (non-UTF-8) bytes
     let matcher = if let Ok(matcher) = RegexMatcherBuilder::new().unicode(false).build(pattern) {
         matcher
@@ -82,6 +82,7 @@ fn search_ripgrep(file: &File, pattern: &str) -> Result<u64, io::Error> {
     };
 
     let mut offset = 0;
+    file.seek(SeekFrom::Start(0))?;
     Searcher::new().search_file(
         &matcher,
         file,
@@ -370,8 +371,6 @@ mod tests {
             (Utc::now() - start).num_microseconds().unwrap()
         );
 
-        file.seek(SeekFrom::Start(0)).ok();
-
         let start = Utc::now();
         search_ripgrep(&mut file, IKCFG_ST_FLAG_STR).unwrap();
         println!(
@@ -379,8 +378,6 @@ mod tests {
             "search_ripgrep",
             (Utc::now() - start).num_microseconds().unwrap()
         );
-
-        file.seek(SeekFrom::Start(0)).ok();
 
         let start = Utc::now();
         search_regex(&mut file, IKCFG_ST_FLAG_STR).unwrap();
@@ -404,8 +401,6 @@ mod tests {
             (Utc::now() - start).num_microseconds().unwrap()
         );
 
-        file.seek(SeekFrom::Start(0)).ok();
-
         let start = Utc::now();
         search_ripgrep(&mut file, super::MAGIC_NUMBER_ZSTD).unwrap();
         println!(
@@ -413,8 +408,6 @@ mod tests {
             "search_ripgrep",
             (Utc::now() - start).num_microseconds().unwrap()
         );
-
-        file.seek(SeekFrom::Start(0)).ok();
 
         let start = Utc::now();
         search_regex(&mut file, super::MAGIC_NUMBER_ZSTD).unwrap();
