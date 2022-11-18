@@ -20,7 +20,7 @@ const IKCFG_ST_FLAG_STR: &str = r"IKCFG_ST\x1f\x8b\x08";
 // search patterns for compressed header
 const MAGIC_NUMBER_GZIP: &str = r"\x1f\x8b\x08";
 const MAGIC_NUMBER_7ZXZ: &str = r"\xfd7zXZ\x00";
-const MAGIC_NUMBER_BZIP: &str = r"BZh";
+const MAGIC_NUMBER_BZIP2: &str = r"BZh";
 const MAGIC_NUMBER_LZMA: &str = r"\x5d\x00\x00\x00";
 const MAGIC_NUMBER_LZOP: &str = r"\x89\x4c\x5a";
 const MAGIC_NUMBER_LZ4: &str = r"\x02\x21\x4c\x18";
@@ -310,7 +310,7 @@ fn main() {
     if let Err(err) = dump_config(&mut file)
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_GZIP, gunzip))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_7ZXZ, unxz))
-        .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_BZIP, bunzip2))
+        .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_BZIP2, bunzip2))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZMA, unlzma))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZOP, lzop))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZ4, lz4))
@@ -338,6 +338,10 @@ mod tests {
     const MAGIC_NUMBER_ZSTD: &[u8] = b"\x28\xb5\x2f\xfd";
     const PATTERN_OFFSET_VMLINUX_ZSTD: u64 = 16063;
 
+    const PATH_VMLINUX_BZIP2: &str = "tests/data/vmlinux.bz2";
+    const MAGIC_NUMBER_BZIP2: &[u8] = b"BZh";
+    const PATTERN_OFFSET_VMLINUX_BZIP2: u64 = 16063;
+
     #[test]
     fn test_search_bytes() {
         let mut file = File::open(PATH_VMLINUX_RAW).unwrap();
@@ -350,6 +354,12 @@ mod tests {
         assert_eq!(
             search_bytes(&mut file, MAGIC_NUMBER_GZIP).unwrap(),
             PATTERN_OFFSET_VMLINUX_GZIP
+        );
+
+        let mut file = File::open(PATH_VMLINUX_BZIP2).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, MAGIC_NUMBER_BZIP2).unwrap(),
+            PATTERN_OFFSET_VMLINUX_BZIP2
         );
 
         let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
@@ -371,6 +381,12 @@ mod tests {
         assert_eq!(
             search_ripgrep(&mut file, super::MAGIC_NUMBER_GZIP).unwrap(),
             PATTERN_OFFSET_VMLINUX_GZIP
+        );
+
+        let mut file = File::open(PATH_VMLINUX_BZIP2).unwrap();
+        assert_eq!(
+            search_ripgrep(&mut file, super::MAGIC_NUMBER_BZIP2).unwrap(),
+            PATTERN_OFFSET_VMLINUX_BZIP2
         );
 
         // TODO: fix this test case
@@ -395,6 +411,12 @@ mod tests {
         assert_eq!(
             search_regex(&mut file, super::MAGIC_NUMBER_GZIP).unwrap(),
             PATTERN_OFFSET_VMLINUX_GZIP
+        );
+
+        let mut file = File::open(PATH_VMLINUX_BZIP2).unwrap();
+        assert_eq!(
+            search_regex(&mut file, super::MAGIC_NUMBER_BZIP2).unwrap(),
+            PATTERN_OFFSET_VMLINUX_BZIP2
         );
 
         let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
@@ -457,6 +479,36 @@ mod tests {
 
         let start = Utc::now();
         search_regex(&mut file, super::MAGIC_NUMBER_GZIP).unwrap();
+        println!(
+            "{:15}: {:-10} us",
+            "search_regex",
+            (Utc::now() - start).num_microseconds().unwrap()
+        );
+    }
+
+    #[test]
+    fn compare_searching_vmlinux_bzip2() {
+        println!("Searching {}", PATH_VMLINUX_BZIP2);
+        let mut file = File::open(PATH_VMLINUX_BZIP2).unwrap();
+
+        let start = Utc::now();
+        search_bytes(&mut file, MAGIC_NUMBER_BZIP2).unwrap();
+        println!(
+            "{:15}: {:-10} us",
+            "search_bytes",
+            (Utc::now() - start).num_microseconds().unwrap()
+        );
+
+        let start = Utc::now();
+        search_ripgrep(&mut file, super::MAGIC_NUMBER_BZIP2).unwrap();
+        println!(
+            "{:15}: {:-10} us",
+            "search_ripgrep",
+            (Utc::now() - start).num_microseconds().unwrap()
+        );
+
+        let start = Utc::now();
+        search_regex(&mut file, super::MAGIC_NUMBER_BZIP2).unwrap();
         println!(
             "{:15}: {:-10} us",
             "search_regex",
