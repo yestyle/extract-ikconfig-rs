@@ -7,8 +7,7 @@ use grep_searcher::{Searcher, Sink, SinkMatch};
 use regex::bytes::RegexBuilder;
 use std::{
     fs::File,
-    io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom, Write},
-    str::from_utf8,
+    io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom},
 };
 use xz2::bufread::XzDecoder;
 use zstd::stream::read::Decoder;
@@ -149,27 +148,9 @@ fn dump_config_gzip(file: &mut File, offset: u64) -> Result<(), io::Error> {
     // seek to offset before passing into GzDecoder
     file.seek(SeekFrom::Start(offset))?;
 
-    let mut gz = GzDecoder::new(BufReader::new(file));
-    let mut bytes = vec![0; 1024];
-
-    loop {
-        match gz.read(&mut bytes) {
-            Ok(read) => {
-                if read == 0 {
-                    return Ok(());
-                }
-                match from_utf8(&bytes[..read]) {
-                    Ok(config) => print!("{config}"),
-                    Err(_) => {
-                        return Err(io::Error::from(ErrorKind::InvalidData));
-                    }
-                }
-            }
-            Err(err) => {
-                return Err(err);
-            }
-        };
-    }
+    let mut decoder = GzDecoder::new(BufReader::new(file));
+    // write the decompressed config text to stdout
+    io::copy(&mut decoder, &mut io::stdout()).map(|_| ())
 }
 
 fn dump_config(file: &mut File) -> Result<(), io::Error> {
@@ -179,84 +160,19 @@ fn dump_config(file: &mut File) -> Result<(), io::Error> {
 
 fn gunzip(src: &File, dst: &mut File) -> Result<(), io::Error> {
     let mut decoder = GzDecoder::new(BufReader::new(src));
-    let mut bytes = vec![0; 1024];
-    loop {
-        match decoder.read(&mut bytes) {
-            Ok(read) => {
-                if read == 0 {
-                    return Ok(());
-                }
-                match dst.write(&bytes[..read]) {
-                    Ok(written) => {
-                        if written != read {
-                            return Err(io::Error::from(ErrorKind::InvalidData));
-                        }
-                    }
-                    Err(err) => {
-                        return Err(err);
-                    }
-                }
-            }
-            Err(err) => {
-                return Err(err);
-            }
-        };
-    }
+    io::copy(&mut decoder, dst).map(|_| ())
 }
 
 fn unxz(src: &File, dst: &mut File) -> Result<(), io::Error> {
     let mut decoder = XzDecoder::new(BufReader::new(src));
-    let mut bytes = vec![0; 1024];
-    loop {
-        match decoder.read(&mut bytes) {
-            Ok(read) => {
-                if read == 0 {
-                    return Ok(());
-                }
-                match dst.write(&bytes[..read]) {
-                    Ok(written) => {
-                        if written != read {
-                            return Err(io::Error::from(ErrorKind::InvalidData));
-                        }
-                    }
-                    Err(err) => {
-                        return Err(err);
-                    }
-                }
-            }
-            Err(_) => {
-                // similar to unzstd(), ignore any errors
-                return Ok(());
-            }
-        };
-    }
+    // similar to unzstd(), ignore any errors
+    _ = io::copy(&mut decoder, dst);
+    Ok(())
 }
 
 fn bunzip2(src: &File, dst: &mut File) -> Result<(), io::Error> {
     let mut decoder = BzDecoder::new(BufReader::new(src));
-    let mut bytes = vec![0; 1024];
-    loop {
-        match decoder.read(&mut bytes) {
-            Ok(read) => {
-                if read == 0 {
-                    return Ok(());
-                }
-                match dst.write(&bytes[..read]) {
-                    Ok(written) => {
-                        if written != read {
-                            return Err(io::Error::from(ErrorKind::InvalidData));
-                        }
-                    }
-                    Err(err) => {
-                        return Err(err);
-                    }
-                }
-            }
-            Err(err) => {
-                return Err(err);
-            }
-        };
-    }
+    io::copy(&mut decoder, dst).map(|_| ())
 }
 
 fn unlzma(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
@@ -273,32 +189,11 @@ fn lz4(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
 
 fn unzstd(src: &File, dst: &mut File) -> Result<(), io::Error> {
     let mut decoder = Decoder::new(src)?;
-    let mut bytes = vec![0; 1024];
-    loop {
-        match decoder.read(&mut bytes) {
-            Ok(read) => {
-                if read == 0 {
-                    return Ok(());
-                }
-                match dst.write(&bytes[..read]) {
-                    Ok(written) => {
-                        if written != read {
-                            return Err(io::Error::from(ErrorKind::InvalidData));
-                        }
-                    }
-                    Err(err) => {
-                        return Err(err);
-                    }
-                }
-            }
-            Err(_) => {
-                // ignore the errors like extract-ikconfig.sh does,
-                // otherwise "Unknown frame descriptor" because there is
-                // excess data at the end of zstd frame.
-                return Ok(());
-            }
-        };
-    }
+    // ignore the errors like extract-ikconfig.sh does,
+    // otherwise "Unknown frame descriptor" because there is
+    // excess data at the end of zstd frame.
+    _ = io::copy(&mut decoder, dst);
+    Ok(())
 }
 
 fn try_decompress<F>(file: &mut File, pattern: &str, decompress: F) -> Result<(), io::Error>
@@ -306,11 +201,12 @@ where
     F: Fn(&File, &mut File) -> Result<(), io::Error>,
 {
     search_regex(file, pattern).and_then(|offset| {
-        // decompress file[offset..] to tempfile
+        // decompress file[offset..] to tempfile to get raw vmlinux
         file.seek(SeekFrom::Start(offset))?;
         let mut dst = tempfile::tempfile()?;
         decompress(file, &mut dst)?;
 
+        // search config_data.gz and dump it in raw vmlinux
         dump_config(&mut dst)
     })
 }
