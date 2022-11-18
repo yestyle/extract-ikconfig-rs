@@ -257,13 +257,13 @@ mod tests {
     const MAGIC_NUMBER_XZ: &[u8] = b"\xfd7zXZ\x00";
     const PATTERN_OFFSET_VMLINUX_XZ: u64 = 16063;
 
-    const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
-    const MAGIC_NUMBER_ZSTD: &[u8] = b"\x28\xb5\x2f\xfd";
-    const PATTERN_OFFSET_VMLINUX_ZSTD: u64 = 16063;
-
     const PATH_VMLINUX_BZIP2: &str = "tests/data/vmlinux.bz2";
     const MAGIC_NUMBER_BZIP2: &[u8] = b"BZh";
     const PATTERN_OFFSET_VMLINUX_BZIP2: u64 = 16063;
+
+    const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
+    const MAGIC_NUMBER_ZSTD: &[u8] = b"\x28\xb5\x2f\xfd";
+    const PATTERN_OFFSET_VMLINUX_ZSTD: u64 = 16063;
 
     #[test]
     fn test_search_bytes() {
@@ -368,13 +368,12 @@ mod tests {
         );
     }
 
-    #[test]
-    fn compare_searching_vmlinux_raw() {
-        println!("Searching {}", PATH_VMLINUX_RAW);
-        let mut file = File::open(PATH_VMLINUX_RAW).unwrap();
+    fn compare_searching_vmlinux(path: &str, bytes: &[u8], pattern: &str) {
+        println!("Searching {}", path);
+        let mut file = File::open(path).unwrap();
 
         let start = Utc::now();
-        search_bytes(&mut file, IKCFG_ST_FLAG_BYTES).unwrap();
+        search_bytes(&mut file, bytes).unwrap();
         println!(
             "{:15}: {:-10} us",
             "search_bytes",
@@ -382,7 +381,7 @@ mod tests {
         );
 
         let start = Utc::now();
-        search_ripgrep(&mut file, IKCFG_ST_FLAG_STR).unwrap();
+        search_ripgrep(&mut file, pattern).unwrap();
         println!(
             "{:15}: {:-10} us",
             "search_ripgrep",
@@ -390,7 +389,7 @@ mod tests {
         );
 
         let start = Utc::now();
-        search_regex(&mut file, IKCFG_ST_FLAG_STR).unwrap();
+        search_regex(&mut file, pattern).unwrap();
         println!(
             "{:15}: {:-10} us",
             "search_regex",
@@ -399,180 +398,85 @@ mod tests {
     }
 
     #[test]
+    fn compare_searching_vmlinux_raw() {
+        compare_searching_vmlinux(PATH_VMLINUX_RAW, IKCFG_ST_FLAG_BYTES, IKCFG_ST_FLAG_STR);
+    }
+
+    #[test]
     fn compare_searching_vmlinux_gzip() {
-        println!("Searching {}", PATH_VMLINUX_GZIP);
-        let mut file = File::open(PATH_VMLINUX_GZIP).unwrap();
-
-        let start = Utc::now();
-        search_bytes(&mut file, MAGIC_NUMBER_GZIP).unwrap();
-        println!(
-            "{:15}: {:-10} us",
-            "search_bytes",
-            (Utc::now() - start).num_microseconds().unwrap()
-        );
-
-        let start = Utc::now();
-        search_ripgrep(&mut file, super::MAGIC_NUMBER_GZIP).unwrap();
-        println!(
-            "{:15}: {:-10} us",
-            "search_ripgrep",
-            (Utc::now() - start).num_microseconds().unwrap()
-        );
-
-        let start = Utc::now();
-        search_regex(&mut file, super::MAGIC_NUMBER_GZIP).unwrap();
-        println!(
-            "{:15}: {:-10} us",
-            "search_regex",
-            (Utc::now() - start).num_microseconds().unwrap()
+        compare_searching_vmlinux(
+            PATH_VMLINUX_GZIP,
+            MAGIC_NUMBER_GZIP,
+            super::MAGIC_NUMBER_GZIP,
         );
     }
 
     #[test]
     fn compare_searching_vmlinux_xz() {
-        println!("Searching {}", PATH_VMLINUX_XZ);
-        let mut file = File::open(PATH_VMLINUX_XZ).unwrap();
-
-        let start = Utc::now();
-        search_bytes(&mut file, MAGIC_NUMBER_XZ).unwrap();
-        println!(
-            "{:15}: {:-10} us",
-            "search_bytes",
-            (Utc::now() - start).num_microseconds().unwrap()
-        );
-
-        let start = Utc::now();
-        search_ripgrep(&mut file, super::MAGIC_NUMBER_XZ).unwrap();
-        println!(
-            "{:15}: {:-10} us",
-            "search_ripgrep",
-            (Utc::now() - start).num_microseconds().unwrap()
-        );
-
-        let start = Utc::now();
-        search_regex(&mut file, super::MAGIC_NUMBER_XZ).unwrap();
-        println!(
-            "{:15}: {:-10} us",
-            "search_regex",
-            (Utc::now() - start).num_microseconds().unwrap()
-        );
+        compare_searching_vmlinux(PATH_VMLINUX_XZ, MAGIC_NUMBER_XZ, super::MAGIC_NUMBER_XZ);
     }
 
     #[test]
     fn compare_searching_vmlinux_bzip2() {
-        println!("Searching {}", PATH_VMLINUX_BZIP2);
-        let mut file = File::open(PATH_VMLINUX_BZIP2).unwrap();
-
-        let start = Utc::now();
-        search_bytes(&mut file, MAGIC_NUMBER_BZIP2).unwrap();
-        println!(
-            "{:15}: {:-10} us",
-            "search_bytes",
-            (Utc::now() - start).num_microseconds().unwrap()
-        );
-
-        let start = Utc::now();
-        search_ripgrep(&mut file, super::MAGIC_NUMBER_BZIP2).unwrap();
-        println!(
-            "{:15}: {:-10} us",
-            "search_ripgrep",
-            (Utc::now() - start).num_microseconds().unwrap()
-        );
-
-        let start = Utc::now();
-        search_regex(&mut file, super::MAGIC_NUMBER_BZIP2).unwrap();
-        println!(
-            "{:15}: {:-10} us",
-            "search_regex",
-            (Utc::now() - start).num_microseconds().unwrap()
+        compare_searching_vmlinux(
+            PATH_VMLINUX_BZIP2,
+            MAGIC_NUMBER_BZIP2,
+            super::MAGIC_NUMBER_BZIP2,
         );
     }
 
     #[test]
     fn compare_searching_vmlinux_zstd() {
-        println!("Searching {}", PATH_VMLINUX_ZSTD);
-        let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
-
-        let start = Utc::now();
-        search_bytes(&mut file, MAGIC_NUMBER_ZSTD).unwrap();
-        println!(
-            "{:15}: {:-10} us",
-            "search_bytes",
-            (Utc::now() - start).num_microseconds().unwrap()
-        );
-
-        let start = Utc::now();
-        search_ripgrep(&mut file, super::MAGIC_NUMBER_ZSTD).unwrap();
-        println!(
-            "{:15}: {:-10} us",
-            "search_ripgrep",
-            (Utc::now() - start).num_microseconds().unwrap()
-        );
-
-        let start = Utc::now();
-        search_regex(&mut file, super::MAGIC_NUMBER_ZSTD).unwrap();
-        println!(
-            "{:15}: {:-10} us",
-            "search_regex",
-            (Utc::now() - start).num_microseconds().unwrap()
+        compare_searching_vmlinux(
+            PATH_VMLINUX_ZSTD,
+            MAGIC_NUMBER_ZSTD,
+            super::MAGIC_NUMBER_ZSTD,
         );
     }
 
-    fn util_compare_to_config(target: &mut File) {
-        target.seek(SeekFrom::Start(0)).unwrap();
+    fn test_decompress<F>(path: &str, decompress: F)
+    where
+        F: Fn(&File, &mut File) -> Result<(), io::Error>,
+    {
+        let src = File::open(path).unwrap();
+        let mut dst = tempfile::tempfile().unwrap();
+
+        assert!(decompress(&src, &mut dst).is_ok());
+
+        dst.seek(SeekFrom::Start(0)).unwrap();
         let mut config = File::open("tests/data/config").unwrap();
 
         let mut expected = String::new();
         let mut decompressed = String::new();
         assert_eq!(
             config.read_to_string(&mut expected).unwrap(),
-            target.read_to_string(&mut decompressed).unwrap()
+            dst.read_to_string(&mut decompressed).unwrap()
         );
         assert_eq!(expected, decompressed);
     }
 
     #[test]
     fn test_decompress_gzip() {
-        let src = File::open("tests/data/config.gz").unwrap();
-        let mut dst = tempfile::tempfile().unwrap();
-
-        assert!(gunzip(&src, &mut dst).is_ok());
-        util_compare_to_config(&mut dst);
+        test_decompress("tests/data/config.gz", gunzip);
     }
 
     #[test]
     fn test_decompress_xz() {
-        let src = File::open("tests/data/config.xz").unwrap();
-        let mut dst = tempfile::tempfile().unwrap();
-
-        assert!(unxz(&src, &mut dst).is_ok());
-        util_compare_to_config(&mut dst);
+        test_decompress("tests/data/config.xz", unxz);
     }
 
     #[test]
     fn test_decompress_bzip2() {
-        let src = File::open("tests/data/config.bz2").unwrap();
-        let mut dst = tempfile::tempfile().unwrap();
-
-        assert!(bunzip2(&src, &mut dst).is_ok());
-        util_compare_to_config(&mut dst);
+        test_decompress("tests/data/config.bz2", bunzip2);
     }
 
     #[test]
     fn test_decompress_lzma() {
-        let src = File::open("tests/data/config.lzma").unwrap();
-        let mut dst = tempfile::tempfile().unwrap();
-
-        assert!(unlzma(&src, &mut dst).is_ok());
-        util_compare_to_config(&mut dst);
+        test_decompress("tests/data/config.lzma", unlzma);
     }
 
     #[test]
     fn test_decompress_zstd() {
-        let src = File::open("tests/data/config.zst").unwrap();
-        let mut dst = tempfile::tempfile().unwrap();
-
-        assert!(unzstd(&src, &mut dst).is_ok());
-        util_compare_to_config(&mut dst);
+        test_decompress("tests/data/config.zst", unzstd);
     }
 }

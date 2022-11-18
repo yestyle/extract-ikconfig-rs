@@ -6,189 +6,92 @@ const SCRIPT_NAME: &str = "tests/extract-ikconfig";
 const PATH_VMLINUX_RAW: &str = "tests/data/vmlinux";
 const PATH_VMLINUX_GZIP: &str = "tests/data/vmlinux.gz";
 const PATH_VMLINUX_XZ: &str = "tests/data/vmlinux.xz";
-const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
 const PATH_VMLINUX_BZIP2: &str = "tests/data/vmlinux.bz2";
+const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
 
-#[test]
-fn test_extract_vmlinux_raw() {
+fn test_extract_vmlinux(path: &str, config: &str) {
     let output = Command::cargo_bin(BIN_NAME)
         .unwrap()
-        .arg(PATH_VMLINUX_RAW)
+        .arg(path)
         .output()
         .unwrap();
 
     let configs = std::str::from_utf8(&output.stdout).unwrap();
     assert!(configs.contains("CONFIG_IKCONFIG=y"));
+    if !config.is_empty() {
+        assert!(configs.contains(format!("CONFIG_KERNEL_{config}=y").as_str()));
+    }
+}
+
+#[test]
+fn test_extract_vmlinux_raw() {
+    test_extract_vmlinux(PATH_VMLINUX_RAW, "");
 }
 
 #[test]
 fn test_extract_vmlinux_gzip() {
-    let output = Command::cargo_bin(BIN_NAME)
-        .unwrap()
-        .arg(PATH_VMLINUX_GZIP)
-        .output()
-        .unwrap();
-
-    let configs = std::str::from_utf8(&output.stdout).unwrap();
-    assert!(configs.contains("CONFIG_IKCONFIG=y"));
-    assert!(configs.contains("CONFIG_KERNEL_GZIP=y"));
+    test_extract_vmlinux(PATH_VMLINUX_GZIP, "GZIP");
 }
 
 #[test]
 fn test_extract_vmlinux_xz() {
-    let output = Command::cargo_bin(BIN_NAME)
-        .unwrap()
-        .arg(PATH_VMLINUX_XZ)
-        .output()
-        .unwrap();
-
-    let configs = std::str::from_utf8(&output.stdout).unwrap();
-    assert!(configs.contains("CONFIG_IKCONFIG=y"));
-    assert!(configs.contains("CONFIG_KERNEL_XZ=y"));
+    test_extract_vmlinux(PATH_VMLINUX_XZ, "XZ");
 }
 
 #[test]
 fn test_extract_vmlinux_bzip2() {
-    let output = Command::cargo_bin(BIN_NAME)
-        .unwrap()
-        .arg(PATH_VMLINUX_BZIP2)
-        .output()
-        .unwrap();
-
-    let configs = std::str::from_utf8(&output.stdout).unwrap();
-    assert!(configs.contains("CONFIG_IKCONFIG=y"));
-    assert!(configs.contains("CONFIG_KERNEL_BZIP2=y"));
+    test_extract_vmlinux(PATH_VMLINUX_BZIP2, "BZIP2");
 }
 
 #[test]
 fn test_extract_vmlinux_zstd() {
-    let output = Command::cargo_bin(BIN_NAME)
-        .unwrap()
-        .arg(PATH_VMLINUX_ZSTD)
-        .output()
-        .unwrap();
+    test_extract_vmlinux(PATH_VMLINUX_ZSTD, "ZSTD");
+}
 
-    let configs = std::str::from_utf8(&output.stdout).unwrap();
-    assert!(configs.contains("CONFIG_IKCONFIG=y"));
-    assert!(configs.contains("CONFIG_KERNEL_ZSTD=y"));
+fn compare_to_shell_script(path: &str) {
+    println!("Extracting {}", path);
+    let start = Utc::now();
+    Command::cargo_bin(BIN_NAME)
+        .unwrap()
+        .arg(path)
+        .assert()
+        .success();
+    println!(
+        "{:20}: {:-10} us",
+        env!("CARGO_PKG_NAME"),
+        (Utc::now() - start).num_microseconds().unwrap()
+    );
+
+    let start = Utc::now();
+    Command::new(SCRIPT_NAME).arg(path).unwrap();
+    println!(
+        "{:20}: {:-10} us",
+        "extract-ikconfig",
+        (Utc::now() - start).num_microseconds().unwrap()
+    );
 }
 
 #[test]
 fn compare_to_shell_script_vmlinux_raw() {
-    println!("Extracting {}", PATH_VMLINUX_RAW);
-    let start = Utc::now();
-    Command::cargo_bin(BIN_NAME)
-        .unwrap()
-        .arg(PATH_VMLINUX_RAW)
-        .assert()
-        .success();
-    println!(
-        "{:20}: {:-10} us",
-        env!("CARGO_PKG_NAME"),
-        (Utc::now() - start).num_microseconds().unwrap()
-    );
-
-    let start = Utc::now();
-    Command::new(SCRIPT_NAME).arg(PATH_VMLINUX_RAW).unwrap();
-    println!(
-        "{:20}: {:-10} us",
-        "extract-ikconfig",
-        (Utc::now() - start).num_microseconds().unwrap()
-    );
+    compare_to_shell_script(PATH_VMLINUX_RAW);
 }
 
 #[test]
 fn compare_to_shell_script_vmlinux_gzip() {
-    println!("Extracting {}", PATH_VMLINUX_GZIP);
-    let start = Utc::now();
-    Command::cargo_bin(BIN_NAME)
-        .unwrap()
-        .arg(PATH_VMLINUX_GZIP)
-        .assert()
-        .success();
-    println!(
-        "{:20}: {:-10} us",
-        env!("CARGO_PKG_NAME"),
-        (Utc::now() - start).num_microseconds().unwrap()
-    );
-
-    let start = Utc::now();
-    Command::new(SCRIPT_NAME).arg(PATH_VMLINUX_GZIP).unwrap();
-    println!(
-        "{:20}: {:-10} us",
-        "extract-ikconfig",
-        (Utc::now() - start).num_microseconds().unwrap()
-    );
+    compare_to_shell_script(PATH_VMLINUX_GZIP);
 }
 
 #[test]
 fn compare_to_shell_script_vmlinux_xz() {
-    println!("Extracting {}", PATH_VMLINUX_XZ);
-    let start = Utc::now();
-    Command::cargo_bin(BIN_NAME)
-        .unwrap()
-        .arg(PATH_VMLINUX_XZ)
-        .assert()
-        .success();
-    println!(
-        "{:20}: {:-10} us",
-        env!("CARGO_PKG_NAME"),
-        (Utc::now() - start).num_microseconds().unwrap()
-    );
-
-    let start = Utc::now();
-    Command::new(SCRIPT_NAME).arg(PATH_VMLINUX_XZ).unwrap();
-    println!(
-        "{:20}: {:-10} us",
-        "extract-ikconfig",
-        (Utc::now() - start).num_microseconds().unwrap()
-    );
+    compare_to_shell_script(PATH_VMLINUX_XZ);
 }
 
 #[test]
 fn compare_to_shell_script_vmlinux_bzip2() {
-    println!("Extracting {}", PATH_VMLINUX_BZIP2);
-    let start = Utc::now();
-    Command::cargo_bin(BIN_NAME)
-        .unwrap()
-        .arg(PATH_VMLINUX_BZIP2)
-        .assert()
-        .success();
-    println!(
-        "{:20}: {:-10} us",
-        env!("CARGO_PKG_NAME"),
-        (Utc::now() - start).num_microseconds().unwrap()
-    );
-
-    let start = Utc::now();
-    Command::new(SCRIPT_NAME).arg(PATH_VMLINUX_BZIP2).unwrap();
-    println!(
-        "{:20}: {:-10} us",
-        "extract-ikconfig",
-        (Utc::now() - start).num_microseconds().unwrap()
-    );
+    compare_to_shell_script(PATH_VMLINUX_BZIP2);
 }
 
 #[test]
 fn compare_to_shell_script_vmlinux_zstd() {
-    println!("Extracting {}", PATH_VMLINUX_ZSTD);
-    let start = Utc::now();
-    Command::cargo_bin(BIN_NAME)
-        .unwrap()
-        .arg(PATH_VMLINUX_ZSTD)
-        .assert()
-        .success();
-    println!(
-        "{:20}: {:-10} us",
-        env!("CARGO_PKG_NAME"),
-        (Utc::now() - start).num_microseconds().unwrap()
-    );
-
-    let start = Utc::now();
-    Command::new(SCRIPT_NAME).arg(PATH_VMLINUX_ZSTD).unwrap();
-    println!(
-        "{:20}: {:-10} us",
-        "extract-ikconfig",
-        (Utc::now() - start).num_microseconds().unwrap()
-    );
+    compare_to_shell_script(PATH_VMLINUX_ZSTD);
 }
