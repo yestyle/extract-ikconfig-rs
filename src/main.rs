@@ -1,3 +1,4 @@
+use bzip2::read::BzDecoder;
 use clap::{Arg, Command};
 use flate2::bufread::GzDecoder;
 use grep_matcher::Matcher;
@@ -176,10 +177,10 @@ fn dump_config(file: &mut File) -> Result<(), io::Error> {
 }
 
 fn gunzip(src: &File, dst: &mut File) -> Result<(), io::Error> {
-    let mut gz = GzDecoder::new(BufReader::new(src));
+    let mut decoder = GzDecoder::new(BufReader::new(src));
     let mut bytes = vec![0; 1024];
     loop {
-        match gz.read(&mut bytes) {
+        match decoder.read(&mut bytes) {
             Ok(read) => {
                 if read == 0 {
                     return Ok(());
@@ -206,8 +207,31 @@ fn unxz(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
     Err(io::Error::from(ErrorKind::NotFound))
 }
 
-fn bunzip2(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
-    Err(io::Error::from(ErrorKind::NotFound))
+fn bunzip2(src: &File, dst: &mut File) -> Result<(), io::Error> {
+    let mut decoder = BzDecoder::new(BufReader::new(src));
+    let mut bytes = vec![0; 1024];
+    loop {
+        match decoder.read(&mut bytes) {
+            Ok(read) => {
+                if read == 0 {
+                    return Ok(());
+                }
+                match dst.write(&bytes[..read]) {
+                    Ok(written) => {
+                        if written != read {
+                            return Err(io::Error::from(ErrorKind::InvalidData));
+                        }
+                    }
+                    Err(err) => {
+                        return Err(err);
+                    }
+                }
+            }
+            Err(err) => {
+                return Err(err);
+            }
+        };
+    }
 }
 
 fn unlzma(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
@@ -223,10 +247,10 @@ fn lz4(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
 }
 
 fn unzstd(src: &File, dst: &mut File) -> Result<(), io::Error> {
-    let mut zstd = Decoder::new(src)?;
+    let mut decoder = Decoder::new(src)?;
     let mut bytes = vec![0; 1024];
     loop {
-        match zstd.read(&mut bytes) {
+        match decoder.read(&mut bytes) {
             Ok(read) => {
                 if read == 0 {
                     return Ok(());
@@ -489,6 +513,15 @@ mod tests {
         let mut dst = tempfile::tempfile().unwrap();
 
         assert!(gunzip(&src, &mut dst).is_ok());
+        util_compare_to_config(&mut dst);
+    }
+
+    #[test]
+    fn test_decompress_bzip2() {
+        let src = File::open("tests/data/config.bz2").unwrap();
+        let mut dst = tempfile::tempfile().unwrap();
+
+        assert!(bunzip2(&src, &mut dst).is_ok());
         util_compare_to_config(&mut dst);
     }
 
