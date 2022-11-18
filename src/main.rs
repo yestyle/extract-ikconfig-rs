@@ -1,4 +1,4 @@
-use bzip2::read::BzDecoder;
+use bzip2::bufread::BzDecoder;
 use clap::{Arg, Command};
 use flate2::bufread::GzDecoder;
 use grep_matcher::Matcher;
@@ -10,7 +10,7 @@ use std::{
     io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom, Write},
     str::from_utf8,
 };
-use xz2::read::XzDecoder;
+use xz2::bufread::XzDecoder;
 use zstd::stream::read::Decoder;
 
 // search pattern:
