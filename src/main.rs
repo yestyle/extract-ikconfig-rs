@@ -261,6 +261,10 @@ mod tests {
     const MAGIC_NUMBER_BZIP2: &[u8] = b"BZh";
     const PATTERN_OFFSET_VMLINUX_BZIP2: u64 = 16063;
 
+    const PATH_VMLINUX_LZMA: &str = "tests/data/vmlinux.lzma";
+    const MAGIC_NUMBER_LZMA: &[u8] = b"\x5d\x00\x00\x00";
+    const PATTERN_OFFSET_VMLINUX_LZMA: u64 = 16063;
+
     const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
     const MAGIC_NUMBER_ZSTD: &[u8] = b"\x28\xb5\x2f\xfd";
     const PATTERN_OFFSET_VMLINUX_ZSTD: u64 = 16063;
@@ -289,6 +293,12 @@ mod tests {
         assert_eq!(
             search_bytes(&mut file, MAGIC_NUMBER_BZIP2).unwrap(),
             PATTERN_OFFSET_VMLINUX_BZIP2
+        );
+
+        let mut file = File::open(PATH_VMLINUX_LZMA).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, MAGIC_NUMBER_LZMA).unwrap(),
+            PATTERN_OFFSET_VMLINUX_LZMA
         );
 
         let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
@@ -325,6 +335,12 @@ mod tests {
             PATTERN_OFFSET_VMLINUX_BZIP2
         );
 
+        let mut file = File::open(PATH_VMLINUX_LZMA).unwrap();
+        assert_eq!(
+            search_ripgrep(&mut file, super::MAGIC_NUMBER_LZMA).unwrap(),
+            PATTERN_OFFSET_VMLINUX_LZMA
+        );
+
         // TODO: fix this test case
         // There are multiple matches at offset 17613, 10991505, 10991721,
         // but search_ripgrep() misses the first match but catches the second.
@@ -359,6 +375,12 @@ mod tests {
         assert_eq!(
             search_regex(&mut file, super::MAGIC_NUMBER_BZIP2).unwrap(),
             PATTERN_OFFSET_VMLINUX_BZIP2
+        );
+
+        let mut file = File::open(PATH_VMLINUX_LZMA).unwrap();
+        assert_eq!(
+            search_regex(&mut file, super::MAGIC_NUMBER_LZMA).unwrap(),
+            PATTERN_OFFSET_VMLINUX_LZMA
         );
 
         let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
@@ -422,6 +444,15 @@ mod tests {
             PATH_VMLINUX_BZIP2,
             MAGIC_NUMBER_BZIP2,
             super::MAGIC_NUMBER_BZIP2,
+        );
+    }
+
+    #[test]
+    fn compare_searching_vmlinux_lzma() {
+        compare_searching_vmlinux(
+            PATH_VMLINUX_LZMA,
+            MAGIC_NUMBER_LZMA,
+            super::MAGIC_NUMBER_LZMA,
         );
     }
 

@@ -7,6 +7,7 @@ const PATH_VMLINUX_RAW: &str = "tests/data/vmlinux";
 const PATH_VMLINUX_GZIP: &str = "tests/data/vmlinux.gz";
 const PATH_VMLINUX_XZ: &str = "tests/data/vmlinux.xz";
 const PATH_VMLINUX_BZIP2: &str = "tests/data/vmlinux.bz2";
+const PATH_VMLINUX_LZMA: &str = "tests/data/vmlinux.lzma";
 const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
 
 fn test_extract_vmlinux(path: &str, config: &str) {
@@ -41,6 +42,11 @@ fn test_extract_vmlinux_xz() {
 #[test]
 fn test_extract_vmlinux_bzip2() {
     test_extract_vmlinux(PATH_VMLINUX_BZIP2, "BZIP2");
+}
+
+#[test]
+fn test_extract_vmlinux_lzma() {
+    test_extract_vmlinux(PATH_VMLINUX_LZMA, "LZMA");
 }
 
 #[test]
@@ -89,6 +95,11 @@ fn compare_to_shell_script_vmlinux_xz() {
 #[test]
 fn compare_to_shell_script_vmlinux_bzip2() {
     compare_to_shell_script(PATH_VMLINUX_BZIP2);
+}
+
+#[test]
+fn compare_to_shell_script_vmlinux_lzma() {
+    compare_to_shell_script(PATH_VMLINUX_LZMA);
 }
 
 #[test]
