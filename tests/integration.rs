@@ -2,6 +2,7 @@ use assert_cmd::Command;
 use chrono::Utc;
 
 const BIN_NAME: &str = env!("CARGO_BIN_EXE_ikconfig");
+const SCRIPT_NAME: &str = "tests/extract-ikconfig";
 const PATH_VMLINUX_RAW: &str = "tests/data/vmlinux";
 const PATH_VMLINUX_GZIP: &str = "tests/data/vmlinux.gz";
 const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
@@ -74,9 +75,7 @@ fn compare_to_shell_script_vmlinux_raw() {
     );
 
     let start = Utc::now();
-    Command::new("tests/extract-ikconfig")
-        .arg(PATH_VMLINUX_RAW)
-        .unwrap();
+    Command::new(SCRIPT_NAME).arg(PATH_VMLINUX_RAW).unwrap();
     println!(
         "{:20}: {:-10} us",
         "extract-ikconfig",
@@ -100,9 +99,7 @@ fn compare_to_shell_script_vmlinux_gzip() {
     );
 
     let start = Utc::now();
-    Command::new("tests/extract-ikconfig")
-        .arg(PATH_VMLINUX_GZIP)
-        .unwrap();
+    Command::new(SCRIPT_NAME).arg(PATH_VMLINUX_GZIP).unwrap();
     println!(
         "{:20}: {:-10} us",
         "extract-ikconfig",
@@ -126,9 +123,7 @@ fn compare_to_shell_script_vmlinux_bzip2() {
     );
 
     let start = Utc::now();
-    Command::new("tests/extract-ikconfig")
-        .arg(PATH_VMLINUX_BZIP2)
-        .unwrap();
+    Command::new(SCRIPT_NAME).arg(PATH_VMLINUX_BZIP2).unwrap();
     println!(
         "{:20}: {:-10} us",
         "extract-ikconfig",
@@ -152,9 +147,7 @@ fn compare_to_shell_script_vmlinux_zstd() {
     );
 
     let start = Utc::now();
-    Command::new("tests/extract-ikconfig")
-        .arg(PATH_VMLINUX_ZSTD)
-        .unwrap();
+    Command::new(SCRIPT_NAME).arg(PATH_VMLINUX_ZSTD).unwrap();
     println!(
         "{:20}: {:-10} us",
         "extract-ikconfig",
