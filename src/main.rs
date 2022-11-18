@@ -10,7 +10,6 @@ use std::{
     fs::File,
     io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom},
 };
-use xz2::bufread::XzDecoder;
 use zstd::stream::read::Decoder;
 
 // search pattern:
@@ -165,10 +164,7 @@ fn gunzip(src: &File, dst: &mut File) -> Result<(), io::Error> {
 }
 
 fn unxz(src: &File, dst: &mut File) -> Result<(), io::Error> {
-    let mut decoder = XzDecoder::new(BufReader::new(src));
-    // similar to unzstd(), ignore any errors
-    _ = io::copy(&mut decoder, dst);
-    Ok(())
+    unlzma(src, dst)
 }
 
 fn bunzip2(src: &File, dst: &mut File) -> Result<(), io::Error> {

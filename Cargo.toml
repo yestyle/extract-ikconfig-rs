@@ -25,7 +25,6 @@ grep-searcher = "0.1.10"
 regex = "1.7.0"
 rust-lzma = "0.5.1"
 tempfile = "3.3.0"
-xz2 = "0.1.7"
 zstd = "0.11.2"
 
 [dev-dependencies]
