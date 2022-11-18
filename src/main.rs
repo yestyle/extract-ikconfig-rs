@@ -4,6 +4,7 @@ use flate2::bufread::GzDecoder;
 use grep_matcher::Matcher;
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{Searcher, Sink, SinkMatch};
+use lzma::LzmaReader;
 use regex::bytes::RegexBuilder;
 use std::{
     fs::File,
@@ -175,8 +176,9 @@ fn bunzip2(src: &File, dst: &mut File) -> Result<(), io::Error> {
     io::copy(&mut decoder, dst).map(|_| ())
 }
 
-fn unlzma(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
-    Err(io::Error::from(ErrorKind::NotFound))
+fn unlzma(src: &File, dst: &mut File) -> Result<(), io::Error> {
+    let mut decoder = LzmaReader::new_decompressor(BufReader::new(src)).unwrap();
+    io::copy(&mut decoder, dst).map(|_| ())
 }
 
 fn lzop(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
@@ -557,6 +559,15 @@ mod tests {
         let mut dst = tempfile::tempfile().unwrap();
 
         assert!(bunzip2(&src, &mut dst).is_ok());
+        util_compare_to_config(&mut dst);
+    }
+
+    #[test]
+    fn test_decompress_lzma() {
+        let src = File::open("tests/data/config.lzma").unwrap();
+        let mut dst = tempfile::tempfile().unwrap();
+
+        assert!(unlzma(&src, &mut dst).is_ok());
         util_compare_to_config(&mut dst);
     }
 

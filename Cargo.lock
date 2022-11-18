@@ -289,6 +289,7 @@ dependencies = [
  "grep-regex",
  "grep-searcher",
  "regex",
+ "rust-lzma",
  "tempfile",
  "xz2",
  "zstd",
@@ -607,6 +608,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "rust-lzma"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "895dc04daeaeee338bb96e229797902ed3f0675bfc59d5b42e0f0b0c13ac54da"
+dependencies = [
+ "pkg-config",
 ]
 
 [[package]]
