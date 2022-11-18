@@ -10,6 +10,7 @@ use std::{
     io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom, Write},
     str::from_utf8,
 };
+use xz2::read::XzDecoder;
 use zstd::stream::read::Decoder;
 
 // search pattern:
@@ -203,8 +204,31 @@ fn gunzip(src: &File, dst: &mut File) -> Result<(), io::Error> {
     }
 }
 
-fn unxz(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
-    Err(io::Error::from(ErrorKind::NotFound))
+fn unxz(src: &File, dst: &mut File) -> Result<(), io::Error> {
+    let mut decoder = XzDecoder::new(BufReader::new(src));
+    let mut bytes = vec![0; 1024];
+    loop {
+        match decoder.read(&mut bytes) {
+            Ok(read) => {
+                if read == 0 {
+                    return Ok(());
+                }
+                match dst.write(&bytes[..read]) {
+                    Ok(written) => {
+                        if written != read {
+                            return Err(io::Error::from(ErrorKind::InvalidData));
+                        }
+                    }
+                    Err(err) => {
+                        return Err(err);
+                    }
+                }
+            }
+            Err(err) => {
+                return Err(err);
+            }
+        };
+    }
 }
 
 fn bunzip2(src: &File, dst: &mut File) -> Result<(), io::Error> {
@@ -565,6 +589,15 @@ mod tests {
         let mut dst = tempfile::tempfile().unwrap();
 
         assert!(gunzip(&src, &mut dst).is_ok());
+        util_compare_to_config(&mut dst);
+    }
+
+    #[test]
+    fn test_decompress_xz() {
+        let src = File::open("tests/data/config.xz").unwrap();
+        let mut dst = tempfile::tempfile().unwrap();
+
+        assert!(unxz(&src, &mut dst).is_ok());
         util_compare_to_config(&mut dst);
     }
 
