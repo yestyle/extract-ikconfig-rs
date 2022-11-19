@@ -10,7 +10,7 @@ use std::{
     fs::File,
     io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom},
 };
-use zstd::stream::read::Decoder;
+use zstd::stream::read::Decoder as ZstdDecoder;
 
 // search pattern:
 // IKCFG_ST is the start flag of in-kernel config
@@ -159,8 +159,7 @@ fn dump_config(file: &mut File) -> Result<(), io::Error> {
 }
 
 fn gunzip(src: &File, dst: &mut File) -> Result<(), io::Error> {
-    let mut decoder = GzDecoder::new(BufReader::new(src));
-    io::copy(&mut decoder, dst).map(|_| ())
+    io::copy(&mut GzDecoder::new(BufReader::new(src)), dst).map(|_| ())
 }
 
 fn unxz(src: &File, dst: &mut File) -> Result<(), io::Error> {
@@ -168,13 +167,16 @@ fn unxz(src: &File, dst: &mut File) -> Result<(), io::Error> {
 }
 
 fn bunzip2(src: &File, dst: &mut File) -> Result<(), io::Error> {
-    let mut decoder = BzDecoder::new(BufReader::new(src));
-    io::copy(&mut decoder, dst).map(|_| ())
+    io::copy(&mut BzDecoder::new(BufReader::new(src)), dst).map(|_| ())
 }
 
 fn unlzma(src: &File, dst: &mut File) -> Result<(), io::Error> {
-    let mut decoder = LzmaReader::new_decompressor(BufReader::new(src)).unwrap();
-    io::copy(&mut decoder, dst).map(|_| ())
+    io::copy(
+        &mut LzmaReader::new_decompressor(BufReader::new(src))
+            .map_err(|_| io::Error::from(ErrorKind::InvalidInput))?,
+        dst,
+    )
+    .map(|_| ())
 }
 
 fn lzop(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
@@ -186,11 +188,10 @@ fn lz4(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
 }
 
 fn unzstd(src: &File, dst: &mut File) -> Result<(), io::Error> {
-    let mut decoder = Decoder::new(src)?;
     // ignore the errors like extract-ikconfig.sh does,
     // otherwise "Unknown frame descriptor" because there is
     // excess data at the end of zstd frame.
-    _ = io::copy(&mut decoder, dst);
+    _ = io::copy(&mut ZstdDecoder::new(BufReader::new(src))?, dst);
     Ok(())
 }
 
