@@ -273,6 +273,10 @@ mod tests {
     const MAGIC_NUMBER_LZMA: &[u8] = b"\x5d\x00\x00\x00";
     const PATTERN_OFFSET_VMLINUX_LZMA: u64 = 16063;
 
+    const PATH_VMLINUX_LZ4: &str = "tests/data/vmlinux.lz4";
+    const MAGIC_NUMBER_LZ4: &[u8] = b"\x02\x21\x4c\x18";
+    const PATTERN_OFFSET_VMLINUX_LZ4: u64 = 16063;
+
     const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
     const MAGIC_NUMBER_ZSTD: &[u8] = b"\x28\xb5\x2f\xfd";
     const PATTERN_OFFSET_VMLINUX_ZSTD: u64 = 16063;
@@ -307,6 +311,12 @@ mod tests {
         assert_eq!(
             search_bytes(&mut file, MAGIC_NUMBER_LZMA).unwrap(),
             PATTERN_OFFSET_VMLINUX_LZMA
+        );
+
+        let mut file = File::open(PATH_VMLINUX_LZ4).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, MAGIC_NUMBER_LZ4).unwrap(),
+            PATTERN_OFFSET_VMLINUX_LZ4
         );
 
         let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
@@ -349,6 +359,13 @@ mod tests {
             PATTERN_OFFSET_VMLINUX_LZMA
         );
 
+        // TODO: similar to zstd below
+        // let mut file = File::open(PATH_VMLINUX_LZ4).unwrap();
+        // assert_eq!(
+        //     search_ripgrep(&mut file, super::MAGIC_NUMBER_LZ4).unwrap(),
+        //     PATTERN_OFFSET_VMLINUX_LZ4
+        // );
+
         // TODO: fix this test case
         // There are multiple matches at offset 17613, 10991505, 10991721,
         // but search_ripgrep() misses the first match but catches the second.
@@ -389,6 +406,12 @@ mod tests {
         assert_eq!(
             search_regex(&mut file, super::MAGIC_NUMBER_LZMA).unwrap(),
             PATTERN_OFFSET_VMLINUX_LZMA
+        );
+
+        let mut file = File::open(PATH_VMLINUX_LZ4).unwrap();
+        assert_eq!(
+            search_regex(&mut file, super::MAGIC_NUMBER_LZ4).unwrap(),
+            PATTERN_OFFSET_VMLINUX_LZ4
         );
 
         let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
@@ -462,6 +485,11 @@ mod tests {
             MAGIC_NUMBER_LZMA,
             super::MAGIC_NUMBER_LZMA,
         );
+    }
+
+    #[test]
+    fn compare_searching_vmlinux_lz4() {
+        compare_searching_vmlinux(PATH_VMLINUX_LZ4, MAGIC_NUMBER_LZ4, super::MAGIC_NUMBER_LZ4);
     }
 
     #[test]
