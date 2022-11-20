@@ -149,9 +149,8 @@ fn dump_config_gzip(file: &mut File, offset: u64) -> Result<(), io::Error> {
     // seek to offset before passing into GzDecoder
     file.seek(SeekFrom::Start(offset))?;
 
-    let mut decoder = GzDecoder::new(BufReader::new(file));
     // write the decompressed config text to stdout
-    io::copy(&mut decoder, &mut io::stdout()).map(|_| ())
+    io::copy(&mut GzDecoder::new(BufReader::new(file)), &mut io::stdout()).map(|_| ())
 }
 
 fn dump_config(file: &mut File) -> Result<(), io::Error> {
