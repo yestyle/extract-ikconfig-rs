@@ -4,6 +4,7 @@ use flate2::bufread::GzDecoder;
 use grep_matcher::Matcher;
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{Searcher, Sink, SinkMatch};
+use lz4_flex::frame::FrameDecoder as Lz4Decoder;
 use lzma::LzmaReader;
 use regex::bytes::RegexBuilder;
 use std::{
@@ -183,8 +184,14 @@ fn lzop(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
     Err(io::Error::from(ErrorKind::NotFound))
 }
 
-fn lz4(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
-    Err(io::Error::from(ErrorKind::NotFound))
+fn unlz4(src: &File, dst: &mut File) -> Result<(), io::Error> {
+    // ignore the errors like extract-ikconfig.sh does
+    // because lz4 compression used in linux kernel is in legacy frame format,
+    // there's no explicit EndMark but implicitly signaled by EOF (End Of File).
+    // however, there are more data after the lz4-compressed blocks,
+    // so ignore errors here.
+    _ = io::copy(&mut Lz4Decoder::new(BufReader::new(src)), dst);
+    Ok(())
 }
 
 fn unzstd(src: &File, dst: &mut File) -> Result<(), io::Error> {
@@ -233,7 +240,7 @@ fn main() {
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_BZIP2, bunzip2))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZMA, unlzma))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZOP, lzop))
-        .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZ4, lz4))
+        .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZ4, unlz4))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_ZSTD, unzstd))
     {
         eprintln!("Failed to extra in-kernel config: {err}");
@@ -505,6 +512,11 @@ mod tests {
     #[test]
     fn test_decompress_lzma() {
         test_decompress("tests/data/config.lzma", unlzma);
+    }
+
+    #[test]
+    fn test_decompress_lz4() {
+        test_decompress("tests/data/config.lz4", unlz4);
     }
 
     #[test]
