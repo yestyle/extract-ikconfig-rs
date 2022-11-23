@@ -233,7 +233,7 @@ fn main() {
         }
     };
 
-    if let Err(err) = dump_config(&mut file)
+    if dump_config(&mut file)
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_GZIP, gunzip))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_XZ, unxz))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_BZIP2, bunzip2))
@@ -241,8 +241,12 @@ fn main() {
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZOP, lzop))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZ4, unlz4))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_ZSTD, unzstd))
+        .is_err()
     {
-        eprintln!("Failed to extra in-kernel config: {err}");
+        eprintln!(
+            "{}: Cannot find kernel config. Please confirm kernel compiled with CONFIG_IKCONFIG.",
+            env!("CARGO_BIN_NAME")
+        );
     }
 }
 
