@@ -6,10 +6,10 @@ This will only work when the kernel was compiled with `CONFIG_IKCONFIG`.
 
 # Install
 
-The following command will install `ikconfig` executable in `~/.cargo/bin` directory:
+This crate has been published onto [crates.io](https://crates.io/crates/ikconfig), so you can use the following command to install `ikconfig` executable in `~/.cargo/bin` directory:
 
 ```
-cargo install --path .
+cargo install ikconfig
 ```
 
 # Usage
@@ -23,6 +23,10 @@ The extracted config file will be printed on standard output as the original she
 ```
 ikconfig /boot/vmlinuz-linux > .config
 ```
+
+# Tests
+
+Because crates.io has a upload size limit of 10 MiB, the test cases and data are moved to [tests branch](https://github.com/yestyle/extract-ikconfig-rs/tree/tests).
 
 # License
 
