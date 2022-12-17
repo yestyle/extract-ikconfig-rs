@@ -1,4 +1,4 @@
-# Extract `.config` file from kernel image
+# ikconfig
 
 This is a Rust re-implementation of [extract-ikconfig](https://github.com/torvalds/linux/blob/master/scripts/extract-ikconfig) from Linux kernel, to extract the `.config` file from a kernel image.
 
@@ -24,3 +24,6 @@ The extracted config file will be printed on standard output as the original she
 ikconfig /boot/vmlinuz-linux > .config
 ```
 
+# License
+
+This project is licensed under [GPL-3.0](COPYING) or [MIT license](LICENSE).
