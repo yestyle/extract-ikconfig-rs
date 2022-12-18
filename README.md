@@ -4,6 +4,29 @@ This is a Rust re-implementation of [extract-ikconfig](https://github.com/torval
 
 This will only work when the kernel was compiled with `CONFIG_IKCONFIG`.
 
+# Pre-installation
+
+This crate requires liblzma being present in the system before installation.
+
+## Arch Linux
+
+```
+sudo pacman -S xz
+```
+
+## Ubuntu
+
+```
+sudo apt install liblzma-dev
+```
+
+Please refer to system manuals for other distributions. You can check if liblzma is installed by using `pkg-config`:
+
+```
+$ pkg-config --libs liblzma
+-llzma
+```
+
 # Install
 
 This crate has been published onto [crates.io](https://crates.io/crates/ikconfig), so you can use the following command to install `ikconfig` executable in `~/.cargo/bin` directory:
