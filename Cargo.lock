@@ -170,7 +170,6 @@ checksum = "fc7fcc620a3bff7cdd7a365be3376c97191aeaccc2a603e600951e452615bf89"
 [[package]]
 name = "lz4_flex"
 version = "0.9.5"
-source = "git+https://github.com/yestyle/lz4_flex#27adae5382fea0aa5e85da1f20187f1a8bb19176"
 dependencies = [
  "twox-hash",
 ]

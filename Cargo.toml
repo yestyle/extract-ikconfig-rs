@@ -24,7 +24,7 @@ strip = "symbols"
 bzip2 = "0.4.3"
 clap = "4.0.19"
 flate2 = "1.0.24"
-lz4_flex = {version = "0.9.5", git = "https://github.com/yestyle/lz4_flex" }
+lz4_flex = { path = "lz4_flex", version = "0.9.5" }
 regex = "1.7.0"
 rust-lzma = "0.5.1"
 tempfile = "3.3.0"
