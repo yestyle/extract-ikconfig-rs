@@ -169,3 +169,309 @@ fn main() {
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::prelude::*;
+    use std::fs::File;
+
+    const PATH_VMLINUX_RAW: &str = "tests/data/vmlinux";
+    const IKCFG_ST_FLAG_BYTES: &[u8] = b"IKCFG_ST\x1f\x8b\x08";
+    const PATTERN_OFFSET_VMLINUX_RAW: u64 = 12645664;
+
+    const PATH_VMLINUX_GZIP: &str = "tests/data/vmlinux.gz";
+    const MAGIC_NUMBER_GZIP: &[u8] = b"\x1f\x8b\x08";
+    const PATTERN_OFFSET_VMLINUX_GZIP: u64 = 16063;
+
+    const PATH_VMLINUX_XZ: &str = "tests/data/vmlinux.xz";
+    const MAGIC_NUMBER_XZ: &[u8] = b"\xfd7zXZ\x00";
+    const PATTERN_OFFSET_VMLINUX_XZ: u64 = 16063;
+
+    const PATH_VMLINUX_BZIP2: &str = "tests/data/vmlinux.bz2";
+    const MAGIC_NUMBER_BZIP2: &[u8] = b"BZh";
+    const PATTERN_OFFSET_VMLINUX_BZIP2: u64 = 16063;
+
+    const PATH_VMLINUX_LZMA: &str = "tests/data/vmlinux.lzma";
+    const MAGIC_NUMBER_LZMA: &[u8] = b"\x5d\x00\x00\x00";
+    const PATTERN_OFFSET_VMLINUX_LZMA: u64 = 16063;
+
+    const PATH_VMLINUX_LZ4: &str = "tests/data/vmlinux.lz4";
+    const MAGIC_NUMBER_LZ4: &[u8] = b"\x02\x21\x4c\x18";
+    const PATTERN_OFFSET_VMLINUX_LZ4: u64 = 16063;
+
+    const PATH_VMLINUX_ZSTD: &str = "tests/data/vmlinux.zst";
+    const MAGIC_NUMBER_ZSTD: &[u8] = b"\x28\xb5\x2f\xfd";
+    const PATTERN_OFFSET_VMLINUX_ZSTD: u64 = 16063;
+
+    #[test]
+    fn test_search_bytes() {
+        let mut file = File::open(PATH_VMLINUX_RAW).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, IKCFG_ST_FLAG_BYTES).unwrap(),
+            PATTERN_OFFSET_VMLINUX_RAW
+        );
+
+        let mut file = File::open(PATH_VMLINUX_GZIP).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, MAGIC_NUMBER_GZIP).unwrap(),
+            PATTERN_OFFSET_VMLINUX_GZIP
+        );
+
+        let mut file = File::open(PATH_VMLINUX_XZ).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, MAGIC_NUMBER_XZ).unwrap(),
+            PATTERN_OFFSET_VMLINUX_XZ
+        );
+
+        let mut file = File::open(PATH_VMLINUX_BZIP2).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, MAGIC_NUMBER_BZIP2).unwrap(),
+            PATTERN_OFFSET_VMLINUX_BZIP2
+        );
+
+        let mut file = File::open(PATH_VMLINUX_LZMA).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, MAGIC_NUMBER_LZMA).unwrap(),
+            PATTERN_OFFSET_VMLINUX_LZMA
+        );
+
+        let mut file = File::open(PATH_VMLINUX_LZ4).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, MAGIC_NUMBER_LZ4).unwrap(),
+            PATTERN_OFFSET_VMLINUX_LZ4
+        );
+
+        let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, MAGIC_NUMBER_ZSTD).unwrap(),
+            PATTERN_OFFSET_VMLINUX_ZSTD
+        );
+    }
+
+    #[test]
+    fn test_search_ripgrep() {
+        let mut file = File::open(PATH_VMLINUX_RAW).unwrap();
+        assert_eq!(
+            search_ripgrep(&mut file, IKCFG_ST_FLAG_STR).unwrap(),
+            PATTERN_OFFSET_VMLINUX_RAW
+        );
+
+        let mut file = File::open(PATH_VMLINUX_GZIP).unwrap();
+        assert_eq!(
+            search_ripgrep(&mut file, super::MAGIC_NUMBER_GZIP).unwrap(),
+            PATTERN_OFFSET_VMLINUX_GZIP
+        );
+
+        // TODO: similar to zstd below
+        // let mut file = File::open(PATH_VMLINUX_XZ).unwrap();
+        // assert_eq!(
+        //     search_ripgrep(&mut file, super::MAGIC_NUMBER_XZ).unwrap(),
+        //     PATTERN_OFFSET_VMLINUX_XZ
+        // );
+
+        let mut file = File::open(PATH_VMLINUX_BZIP2).unwrap();
+        assert_eq!(
+            search_ripgrep(&mut file, super::MAGIC_NUMBER_BZIP2).unwrap(),
+            PATTERN_OFFSET_VMLINUX_BZIP2
+        );
+
+        let mut file = File::open(PATH_VMLINUX_LZMA).unwrap();
+        assert_eq!(
+            search_ripgrep(&mut file, super::MAGIC_NUMBER_LZMA).unwrap(),
+            PATTERN_OFFSET_VMLINUX_LZMA
+        );
+
+        // TODO: similar to zstd below
+        // let mut file = File::open(PATH_VMLINUX_LZ4).unwrap();
+        // assert_eq!(
+        //     search_ripgrep(&mut file, super::MAGIC_NUMBER_LZ4).unwrap(),
+        //     PATTERN_OFFSET_VMLINUX_LZ4
+        // );
+
+        // TODO: fix this test case
+        // There are multiple matches at offset 17613, 10991505, 10991721,
+        // but search_ripgrep() misses the first match but catches the second.
+        // let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
+        // assert_eq!(
+        //     search_ripgrep(&mut file, super::MAGIC_NUMBER_ZSTD).unwrap(),
+        //     PATTERN_OFFSET_VMLINUX_ZSTD
+        // );
+    }
+
+    #[test]
+    fn test_search_regex() {
+        let mut file = File::open(PATH_VMLINUX_RAW).unwrap();
+        assert_eq!(
+            search_regex(&mut file, IKCFG_ST_FLAG_STR).unwrap(),
+            PATTERN_OFFSET_VMLINUX_RAW
+        );
+
+        let mut file = File::open(PATH_VMLINUX_GZIP).unwrap();
+        assert_eq!(
+            search_regex(&mut file, super::MAGIC_NUMBER_GZIP).unwrap(),
+            PATTERN_OFFSET_VMLINUX_GZIP
+        );
+
+        let mut file = File::open(PATH_VMLINUX_XZ).unwrap();
+        assert_eq!(
+            search_regex(&mut file, super::MAGIC_NUMBER_XZ).unwrap(),
+            PATTERN_OFFSET_VMLINUX_XZ
+        );
+
+        let mut file = File::open(PATH_VMLINUX_BZIP2).unwrap();
+        assert_eq!(
+            search_regex(&mut file, super::MAGIC_NUMBER_BZIP2).unwrap(),
+            PATTERN_OFFSET_VMLINUX_BZIP2
+        );
+
+        let mut file = File::open(PATH_VMLINUX_LZMA).unwrap();
+        assert_eq!(
+            search_regex(&mut file, super::MAGIC_NUMBER_LZMA).unwrap(),
+            PATTERN_OFFSET_VMLINUX_LZMA
+        );
+
+        let mut file = File::open(PATH_VMLINUX_LZ4).unwrap();
+        assert_eq!(
+            search_regex(&mut file, super::MAGIC_NUMBER_LZ4).unwrap(),
+            PATTERN_OFFSET_VMLINUX_LZ4
+        );
+
+        let mut file = File::open(PATH_VMLINUX_ZSTD).unwrap();
+        assert_eq!(
+            search_regex(&mut file, super::MAGIC_NUMBER_ZSTD).unwrap(),
+            PATTERN_OFFSET_VMLINUX_ZSTD
+        );
+    }
+
+    fn compare_searching_vmlinux(path: &str, bytes: &[u8], pattern: &str) {
+        println!("Searching {}", path);
+        let mut file = File::open(path).unwrap();
+
+        let start = Utc::now();
+        search_bytes(&mut file, bytes).unwrap();
+        println!(
+            "{:15}: {:-10} us",
+            "search_bytes",
+            (Utc::now() - start).num_microseconds().unwrap()
+        );
+
+        let start = Utc::now();
+        search_ripgrep(&mut file, pattern).unwrap();
+        println!(
+            "{:15}: {:-10} us",
+            "search_ripgrep",
+            (Utc::now() - start).num_microseconds().unwrap()
+        );
+
+        let start = Utc::now();
+        search_regex(&mut file, pattern).unwrap();
+        println!(
+            "{:15}: {:-10} us",
+            "search_regex",
+            (Utc::now() - start).num_microseconds().unwrap()
+        );
+    }
+
+    #[test]
+    fn compare_searching_vmlinux_raw() {
+        compare_searching_vmlinux(PATH_VMLINUX_RAW, IKCFG_ST_FLAG_BYTES, IKCFG_ST_FLAG_STR);
+    }
+
+    #[test]
+    fn compare_searching_vmlinux_gzip() {
+        compare_searching_vmlinux(
+            PATH_VMLINUX_GZIP,
+            MAGIC_NUMBER_GZIP,
+            super::MAGIC_NUMBER_GZIP,
+        );
+    }
+
+    #[test]
+    fn compare_searching_vmlinux_xz() {
+        compare_searching_vmlinux(PATH_VMLINUX_XZ, MAGIC_NUMBER_XZ, super::MAGIC_NUMBER_XZ);
+    }
+
+    #[test]
+    fn compare_searching_vmlinux_bzip2() {
+        compare_searching_vmlinux(
+            PATH_VMLINUX_BZIP2,
+            MAGIC_NUMBER_BZIP2,
+            super::MAGIC_NUMBER_BZIP2,
+        );
+    }
+
+    #[test]
+    fn compare_searching_vmlinux_lzma() {
+        compare_searching_vmlinux(
+            PATH_VMLINUX_LZMA,
+            MAGIC_NUMBER_LZMA,
+            super::MAGIC_NUMBER_LZMA,
+        );
+    }
+
+    #[test]
+    fn compare_searching_vmlinux_lz4() {
+        compare_searching_vmlinux(PATH_VMLINUX_LZ4, MAGIC_NUMBER_LZ4, super::MAGIC_NUMBER_LZ4);
+    }
+
+    #[test]
+    fn compare_searching_vmlinux_zstd() {
+        compare_searching_vmlinux(
+            PATH_VMLINUX_ZSTD,
+            MAGIC_NUMBER_ZSTD,
+            super::MAGIC_NUMBER_ZSTD,
+        );
+    }
+
+    fn test_decompress<F>(path: &str, decompress: F)
+    where
+        F: Fn(&File, &mut File) -> Result<(), io::Error>,
+    {
+        let src = File::open(path).unwrap();
+        let mut dst = tempfile::tempfile().unwrap();
+
+        assert!(decompress(&src, &mut dst).is_ok());
+
+        dst.seek(SeekFrom::Start(0)).unwrap();
+        let mut config = File::open("tests/data/config").unwrap();
+
+        let mut expected = String::new();
+        let mut decompressed = String::new();
+        assert_eq!(
+            config.read_to_string(&mut expected).unwrap(),
+            dst.read_to_string(&mut decompressed).unwrap()
+        );
+        assert_eq!(expected, decompressed);
+    }
+
+    #[test]
+    fn test_decompress_gzip() {
+        test_decompress("tests/data/config.gz", gunzip);
+    }
+
+    #[test]
+    fn test_decompress_xz() {
+        test_decompress("tests/data/config.xz", unxz);
+    }
+
+    #[test]
+    fn test_decompress_bzip2() {
+        test_decompress("tests/data/config.bz2", bunzip2);
+    }
+
+    #[test]
+    fn test_decompress_lzma() {
+        test_decompress("tests/data/config.lzma", unlzma);
+    }
+
+    #[test]
+    fn test_decompress_lz4() {
+        test_decompress("tests/data/config.lz4", unlz4);
+    }
+
+    #[test]
+    fn test_decompress_zstd() {
+        test_decompress("tests/data/config.zst", unzstd);
+    }
+}
