@@ -67,10 +67,6 @@ cd extract-ikconfig-rs
 cargo install --path .
 ```
 
-# Tests
-
-Because crates.io has a upload size limit of 10 MiB, the test cases and data are moved to [tests branch][self-tests-branch].
-
 # License
 
 This project is licensed under [GPL-3.0](COPYING) or [MIT license](LICENSE).

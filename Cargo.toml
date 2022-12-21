@@ -11,6 +11,7 @@ repository = "https://github.com/yestyle/extract-ikconfig-rs"
 homepage = "https://github.com/yestyle/extract-ikconfig-rs"
 documentation = "https://github.com/yestyle/extract-ikconfig-rs"
 readme = "README.md"
+exclude = ["tests/data/*"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
