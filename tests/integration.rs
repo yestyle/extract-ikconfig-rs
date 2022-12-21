@@ -1,5 +1,5 @@
 use assert_cmd::Command;
-use chrono::Utc;
+use time::Instant;
 
 const BIN_NAME: &str = env!("CARGO_BIN_EXE_ikconfig");
 const SCRIPT_NAME: &str = "tests/extract-ikconfig";
@@ -62,7 +62,7 @@ fn test_extract_vmlinux_zstd() {
 
 fn compare_to_shell_script(path: &str) {
     println!("Extracting {}", path);
-    let start = Utc::now();
+    let instant = Instant::now();
     Command::cargo_bin(BIN_NAME)
         .unwrap()
         .arg(path)
@@ -71,15 +71,15 @@ fn compare_to_shell_script(path: &str) {
     println!(
         "{:20}: {:-10} us",
         env!("CARGO_PKG_NAME"),
-        (Utc::now() - start).num_microseconds().unwrap()
+        instant.elapsed().whole_microseconds()
     );
 
-    let start = Utc::now();
+    let instant = Instant::now();
     Command::new(SCRIPT_NAME).arg(path).unwrap();
     println!(
         "{:20}: {:-10} us",
         "extract-ikconfig",
-        (Utc::now() - start).num_microseconds().unwrap()
+        instant.elapsed().whole_microseconds()
     );
 }
 

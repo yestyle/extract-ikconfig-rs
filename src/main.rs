@@ -253,8 +253,8 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::prelude::*;
     use std::fs::File;
+    use time::Instant;
 
     const PATH_VMLINUX_RAW: &str = "tests/data/vmlinux";
     const IKCFG_ST_FLAG_BYTES: &[u8] = b"IKCFG_ST\x1f\x8b\x08";
@@ -428,28 +428,28 @@ mod tests {
         println!("Searching {}", path);
         let mut file = File::open(path).unwrap();
 
-        let start = Utc::now();
+        let instant = Instant::now();
         search_bytes(&mut file, bytes).unwrap();
         println!(
             "{:15}: {:-10} us",
             "search_bytes",
-            (Utc::now() - start).num_microseconds().unwrap()
+            instant.elapsed().whole_microseconds()
         );
 
-        let start = Utc::now();
+        let instant = Instant::now();
         search_ripgrep(&mut file, pattern).unwrap();
         println!(
             "{:15}: {:-10} us",
             "search_ripgrep",
-            (Utc::now() - start).num_microseconds().unwrap()
+            instant.elapsed().whole_microseconds()
         );
 
-        let start = Utc::now();
+        let instant = Instant::now();
         search_regex(&mut file, pattern).unwrap();
         println!(
             "{:15}: {:-10} us",
             "search_regex",
-            (Utc::now() - start).num_microseconds().unwrap()
+            instant.elapsed().whole_microseconds()
         );
     }
 
