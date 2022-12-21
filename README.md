@@ -59,7 +59,7 @@ Because Linux kernel uses [legacy frame format][lz4-legacy-frame], but the LZ4 d
 
 I added the support of decoding legacy frames in [my fork][yestyle-lz4-flex] and used it for ikconfig, but crates.io still pull the original one, which is reasonable.
 
-So for now, if you want to extract .config file from a kernel compiled with `CONFIG_KERNEL_LZ4`, you could either use the shell script [extract-ikconfig] from Linux kernel, or clone ikconfig source code and install from there:
+So for now, if you want to extract `.config` file from a kernel compiled with `CONFIG_KERNEL_LZ4`, you could either use the shell script [extract-ikconfig] from Linux kernel, or clone ikconfig source code and install from there:
 
 ```
 git clone --recursive https://github.com/yestyle/extract-ikconfig-rs
