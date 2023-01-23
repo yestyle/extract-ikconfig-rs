@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      - name: Install toolchain
+        run: |
+          rustup update
+          rustup component add clippy
+      - name : Toolchain info
+        run: |
+          cargo --version --verbose
+          rustc --version --verbose
+      - name: Run cargo build
+        run: |
+          cargo build --release
+      - name: Run cargo clippy
+        run: |
+          cargo clippy
+      - name: Run cargo test
+        run: |
+          cargo test
+
+
