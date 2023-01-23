@@ -28,6 +28,5 @@ jobs:
           cargo clippy
       - name: Run cargo test
         run: |
-          cargo test
-
+          cargo test --release --test integration  -- --show-output
 
