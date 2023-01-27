@@ -6,26 +6,27 @@ This will only work when the kernel was compiled with `CONFIG_IKCONFIG`.
 
 # Pre-installation
 
-This crate requires liblzma being present in the system before installation.
+This crate requires `liblzma` being present in the system before installation and `pkg-config` is used to find `liblzma` and other libraries during the build.
 
 ## Arch Linux
 
 ```
-sudo pacman -S xz
+sudo pacman -S pkgconf xz
 ```
 
 ## Ubuntu
 
 ```
-sudo apt install liblzma-dev
+sudo apt install pkg-config liblzma-dev
 ```
 
-Please refer to system manuals for other distributions. You can check if liblzma is installed by using `pkg-config`:
+Please refer to system manuals for other distributions. You can check if liblzma is installed by running:
 
 ```
 $ pkg-config --libs liblzma
--llzma
 ```
+
+And it should output `-llzma` if `liblzma` is correctly installed.
 
 # Install
 
