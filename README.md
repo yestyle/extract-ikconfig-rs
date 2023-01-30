@@ -54,12 +54,6 @@ ikconfig /boot/vmlinuz-linux > .config
 
 I haven't managed to make LZO decompression working yet, so if the kernel is compiled with `CONFIG_KERNEL_LZO`, `ikconfig` won't work. Please use the shell script [extract-ikconfig] from Linux kernel for now.
 
-```
-git clone --recursive https://github.com/yestyle/extract-ikconfig-rs
-cd extract-ikconfig-rs
-cargo install --path .
-```
-
 # License
 
 This project is licensed under [GPL-3.0](COPYING) or [MIT license](LICENSE).
