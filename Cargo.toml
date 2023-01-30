@@ -28,14 +28,11 @@ flate2 = "1.0.24"
 grep-matcher = "0.1.5"
 grep-regex = "0.1.10"
 grep-searcher = "0.1.10"
-lz4_flex = "0.9.5"
+lz4_flex = "0.10.0"
 regex = "1.7.0"
 rust-lzma = "0.5.1"
 tempfile = "3.3.0"
 zstd = "0.11.2"
-
-[patch.crates-io]
-lz4_flex = { git = 'https://github.com/PSeitz/lz4_flex' }
 
 [dev-dependencies]
 assert_cmd = "2.0.6"

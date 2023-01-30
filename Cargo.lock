@@ -249,7 +249,7 @@ dependencies = [
 
 [[package]]
 name = "ikconfig"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "assert_cmd",
  "bzip2",
@@ -316,8 +316,9 @@ dependencies = [
 
 [[package]]
 name = "lz4_flex"
-version = "0.9.5"
-source = "git+https://github.com/PSeitz/lz4_flex#8f5135ef258a43114a22f6b010e60d8fbd8a15b6"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b8c72594ac26bfd34f2d99dfced2edfaddfe8a476e3ff2ca0eb293d925c4f83"
 dependencies = [
  "twox-hash",
 ]
