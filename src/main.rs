@@ -1,8 +1,11 @@
 use bzip2::bufread::BzDecoder;
 use clap::{Arg, Command};
 use flate2::bufread::GzDecoder;
+#[cfg(test)]
 use grep_matcher::Matcher;
+#[cfg(test)]
 use grep_regex::RegexMatcherBuilder;
+#[cfg(test)]
 use grep_searcher::{Searcher, Sink, SinkMatch};
 use lz4_flex::frame::FrameDecoder as Lz4Decoder;
 use lzma::LzmaReader;
@@ -27,7 +30,7 @@ const MAGIC_NUMBER_LZOP: &str = r"\x89\x4c\x5a";
 const MAGIC_NUMBER_LZ4: &str = r"\x02\x21\x4c\x18";
 const MAGIC_NUMBER_ZSTD: &str = r"\x28\xb5\x2f\xfd";
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn search_bytes(file: &mut File, pattern: &[u8]) -> Result<u64, io::Error> {
     let filelen = file.metadata()?.len();
     let mut start = 0;
@@ -57,10 +60,12 @@ fn search_bytes(file: &mut File, pattern: &[u8]) -> Result<u64, io::Error> {
     }
 }
 
+#[cfg(test)]
 struct Offset<F>(F)
 where
     F: FnMut(u64, &[u8]) -> Result<bool, io::Error>;
 
+#[cfg(test)]
 impl<F> Sink for Offset<F>
 where
     F: FnMut(u64, &[u8]) -> Result<bool, io::Error>,
@@ -74,7 +79,7 @@ where
     }
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn search_ripgrep(file: &mut File, pattern: &str) -> Result<u64, io::Error> {
     // Disable Unicode (\u flag) to search arbitrary (non-UTF-8) bytes
     let matcher = if let Ok(matcher) = RegexMatcherBuilder::new().unicode(false).build(pattern) {
