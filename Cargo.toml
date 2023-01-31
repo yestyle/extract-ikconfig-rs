@@ -25,7 +25,7 @@ strip = "symbols"
 bzip2 = "0.4.4"
 clap = "4.0.19"
 flate2 = "1.0.24"
-lz4_flex = "0.10.0"
+lz4_flex = { version = "0.10", default-features = false, features = ["checked-decode", "frame"] }
 regex = "1.7.0"
 rust-lzma = "0.5.1"
 tempfile = "3.3.0"
