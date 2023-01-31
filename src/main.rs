@@ -1,5 +1,5 @@
+use argh::FromArgs;
 use bzip2::bufread::BzDecoder;
-use clap::{Arg, Command};
 use flate2::bufread::GzDecoder;
 #[cfg(test)]
 use grep_matcher::Matcher;
@@ -221,19 +221,19 @@ where
     })
 }
 
-fn main() {
-    let matches = Command::new(env!("CARGO_BIN_NAME"))
-        .about("An utility to extract the .config file from a kernel image")
-        .arg_required_else_help(true)
-        .arg(Arg::new("image").help("kernel image compiled with CONFIG_IKCONFIG"))
-        .get_matches();
+#[derive(FromArgs)]
+#[argh(description = "An utility to extract the .config file from a kernel image")]
+struct Args {
+    #[argh(positional, description = "kernel image compiled with CONFIG_IKCONFIG")]
+    image: String,
+}
 
-    // "image" argument is required so could be unwrapped safely
-    let image = matches.get_one::<String>("image").unwrap();
-    let mut file = match File::open(image) {
+fn main() {
+    let args: Args = argh::from_env();
+    let mut file = match File::open(&args.image) {
         Ok(image) => image,
         Err(err) => {
-            eprintln!("Failed to open file {image}: {err}");
+            eprintln!("Failed to open file {}: {err}", &args.image);
             return;
         }
     };
