@@ -23,9 +23,11 @@ strip = "symbols"
 
 [dependencies]
 argh = "0.1.10"
+byteorder = "1.4.3"
 bzip2 = "0.4.4"
 flate2 = "1.0.24"
 lz4_flex = { version = "0.10", default-features = false, features = ["checked-decode", "frame"] }
+minilzo-rs = "0.6.0"
 regex = "1.7.0"
 rust-lzma = "0.5.1"
 tempfile = "3.3.0"

@@ -1,4 +1,5 @@
 use argh::FromArgs;
+use byteorder::{BigEndian, ReadBytesExt};
 use bzip2::bufread::BzDecoder;
 use flate2::bufread::GzDecoder;
 #[cfg(test)]
@@ -12,7 +13,8 @@ use lzma::LzmaReader;
 use regex::bytes::RegexBuilder;
 use std::{
     fs::File,
-    io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom},
+    io::{self, BufReader, ErrorKind, Read, Seek, SeekFrom, Write},
+    mem::size_of_val,
 };
 use zstd::stream::read::Decoder as ZstdDecoder;
 
@@ -26,7 +28,7 @@ const MAGIC_NUMBER_GZIP: &str = r"\x1f\x8b\x08";
 const MAGIC_NUMBER_XZ: &str = r"\xfd7zXZ\x00";
 const MAGIC_NUMBER_BZIP2: &str = r"BZh";
 const MAGIC_NUMBER_LZMA: &str = r"\x5d\x00\x00\x00";
-const MAGIC_NUMBER_LZOP: &str = r"\x89\x4c\x5a";
+const MAGIC_NUMBER_LZO: &str = r"\x89\x4c\x5a";
 const MAGIC_NUMBER_LZ4: &str = r"\x02\x21\x4c\x18";
 const MAGIC_NUMBER_ZSTD: &str = r"\x28\xb5\x2f\xfd";
 
@@ -184,8 +186,163 @@ fn unlzma(src: &File, dst: &mut File) -> Result<(), io::Error> {
     .map(|_| ())
 }
 
-fn lzop(_src: &File, _dst: &mut File) -> Result<(), io::Error> {
-    Err(io::Error::from(ErrorKind::NotFound))
+fn f_read8(buf: &mut BufReader<&File>) -> u8 {
+    buf.read_u8().unwrap()
+}
+
+fn f_read16(buf: &mut BufReader<&File>) -> u16 {
+    buf.read_u16::<BigEndian>().unwrap()
+}
+
+fn f_read32(buf: &mut BufReader<&File>) -> u32 {
+    buf.read_u32::<BigEndian>().unwrap()
+}
+
+fn unlzo(src: &File, dst: &mut File) -> Result<(), io::Error> {
+    const LZOP_MAGIC: &[u8] = &[0x89, 0x4c, 0x5a, 0x4f, 0x00, 0x0d, 0x0a, 0x1a, 0x0a];
+    const MAX_BLOCK_SIZE: usize = 64 * 1024 * 1024;
+    const BLOCK_SIZE: usize = 256 * 1024;
+    const F_ADLER32_D: u32 = 0x00000001;
+    const F_ADLER32_C: u32 = 0x00000002;
+    const F_STDIN: u32 = 0x00000004;
+    const F_H_EXTRA_FIELD: u32 = 0x00000040;
+    const F_CRC32_D: u32 = 0x00000100;
+    const F_CRC32_C: u32 = 0x00000200;
+    const F_H_FILTER: u32 = 0x00000800;
+
+    let mut buf = BufReader::new(src);
+    let mut magic = vec![0u8; size_of_val(LZOP_MAGIC)];
+
+    if buf.read_exact(&mut magic).is_ok() && magic == LZOP_MAGIC {
+        let lzo = minilzo_rs::LZO::init().unwrap();
+
+        let mut _version_needed = 0x0900;
+
+        let version = f_read16(&mut buf);
+        if version < 0x0900 {
+            return Err(io::Error::from(ErrorKind::InvalidInput));
+        }
+
+        let _lib_version = f_read16(&mut buf);
+        if version >= 0x0940 {
+            _version_needed = f_read16(&mut buf);
+            if _version_needed > 0x1040 || _version_needed < 0x0900 {
+                return Err(io::Error::from(ErrorKind::InvalidInput));
+            }
+        }
+
+        let _method = f_read8(&mut buf);
+        if version >= 0x0940 {
+            let _level = f_read8(&mut buf);
+        }
+        let flags = f_read32(&mut buf);
+        if flags & F_H_FILTER != 0 {
+            let _filter = f_read32(&mut buf);
+        }
+        let mut _mode = f_read32(&mut buf);
+        if flags & F_STDIN != 0 {
+            _mode = 0;
+        }
+        let _mtime_low = f_read32(&mut buf);
+        if version >= 0x0940 {
+            let _mtime_high = f_read32(&mut buf);
+        }
+
+        let len = f_read8(&mut buf) as usize;
+        if len > 0 {
+            let mut name = vec![0u8; len];
+            buf.read_exact(&mut name).ok();
+        }
+
+        let _header_checksum = f_read32(&mut buf);
+
+        if flags & F_H_EXTRA_FIELD != 0 {
+            let extra_field_len = f_read32(&mut buf) as usize;
+            let mut extra_field_data = vec![0u8; extra_field_len];
+            buf.read_exact(&mut extra_field_data).ok();
+            let _extra_field_checksum = f_read32(&mut buf);
+        }
+
+        loop {
+            // read uncompressed block size
+            let dst_len = f_read32(&mut buf) as usize;
+
+            // exit if last block
+            if dst_len == 0 {
+                break;
+            }
+
+            // error if split file
+            if dst_len == 0xFFFFFFFF {
+                eprintln!("this file is a split lzop file");
+                return Err(io::Error::from(ErrorKind::InvalidInput));
+            }
+
+            if dst_len > MAX_BLOCK_SIZE {
+                eprintln!("lzop file corrupted");
+                return Err(io::Error::from(ErrorKind::InvalidInput));
+            }
+
+            // read compressed block size
+            let src_len = f_read32(&mut buf) as usize;
+            if src_len <= 0 || src_len > dst_len {
+                eprintln!("lzop file corrupted");
+                return Err(io::Error::from(ErrorKind::InvalidInput));
+            }
+
+            if dst_len > BLOCK_SIZE {
+                eprintln!("block size too small");
+                return Err(io::Error::from(ErrorKind::InvalidInput));
+            }
+
+            if flags & F_ADLER32_D != 0 {
+                let _d_adler32 = f_read32(&mut buf);
+            }
+            if flags & F_CRC32_D != 0 {
+                let _d_crc32 = f_read32(&mut buf);
+            }
+            if flags & F_ADLER32_C != 0 {
+                if src_len < dst_len {
+                    let _c_adler32 = f_read32(&mut buf);
+                } else {
+                    assert!(flags & F_ADLER32_D != 0);
+                }
+            }
+            if flags & F_CRC32_C != 0 {
+                if src_len < dst_len {
+                    let _c_crc32 = f_read32(&mut buf);
+                } else {
+                    assert!(flags & F_CRC32_D != 0);
+                }
+            }
+
+            // read the block
+            let mut src_data = vec![0u8; src_len];
+            buf.read_exact(&mut src_data)?;
+
+            if src_len < dst_len {
+                // decompress
+                if let Ok(dst_data) = lzo.decompress_safe(&src_data, dst_len) {
+                    if dst_data.len() == dst_len {
+                        dst.write_all(&dst_data)?;
+                    } else {
+                        eprintln!("compressed data violation");
+                        return Err(io::Error::from(ErrorKind::InvalidInput));
+                    }
+                } else {
+                    eprintln!("compressed data violation");
+                    return Err(io::Error::from(ErrorKind::InvalidInput));
+                }
+            } else {
+                // uncompressed block
+                dst.write_all(&src_data)?;
+            }
+        }
+
+        Ok(())
+    } else {
+        Err(io::Error::from(ErrorKind::NotFound))
+    }
 }
 
 fn unlz4(src: &File, dst: &mut File) -> Result<(), io::Error> {
@@ -216,7 +373,7 @@ where
         let mut dst = tempfile::tempfile()?;
         decompress(file, &mut dst)?;
 
-        // search config_data.gz and dump it in raw vmlinux
+        // search config_data.gz in raw vmlinux and dump it
         dump_config(&mut dst)
     })
 }
@@ -243,7 +400,7 @@ fn main() {
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_XZ, unxz))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_BZIP2, bunzip2))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZMA, unlzma))
-        .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZOP, lzop))
+        .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZO, unlzo))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_LZ4, unlz4))
         .or_else(|_| try_decompress(&mut file, MAGIC_NUMBER_ZSTD, unzstd))
         .is_err()
@@ -548,6 +705,11 @@ mod tests {
     #[test]
     fn test_decompress_lzma() {
         test_decompress("tests/data/config.lzma", unlzma);
+    }
+
+    #[test]
+    fn test_decompress_lzo() {
+        test_decompress("tests/data/config.lzo", unlzo);
     }
 
     #[test]
