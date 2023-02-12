@@ -121,7 +121,7 @@ fn search_regex(file: &File, pattern: &str) -> Result<u64, io::Error> {
         return Err(io::Error::from(ErrorKind::InvalidInput));
     };
 
-    buff.seek(SeekFrom::Start(0))?;
+    buff.rewind()?;
     loop {
         match buff.read(&mut bytes) {
             Ok(read) => {
