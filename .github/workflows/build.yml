@@ -12,6 +12,11 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
+      - name: Setup prerequisites
+        shell: bash
+        run: |
+          sudo apt update
+          sudo apt install lzop
       - name : Toolchain info
         run: |
           cargo --version --verbose
