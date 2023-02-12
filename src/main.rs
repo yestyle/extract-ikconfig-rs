@@ -226,7 +226,7 @@ fn unlzo(src: &File, dst: &mut File) -> Result<(), io::Error> {
         let _lib_version = f_read16(&mut buf);
         if version >= 0x0940 {
             _version_needed = f_read16(&mut buf);
-            if _version_needed > 0x1040 || _version_needed < 0x0900 {
+            if !(0x0900..=0x1040).contains(&_version_needed) {
                 return Err(io::Error::from(ErrorKind::InvalidInput));
             }
         }
@@ -285,7 +285,7 @@ fn unlzo(src: &File, dst: &mut File) -> Result<(), io::Error> {
 
             // read compressed block size
             let src_len = f_read32(&mut buf) as usize;
-            if src_len <= 0 || src_len > dst_len {
+            if src_len > dst_len {
                 eprintln!("lzop file corrupted");
                 return Err(io::Error::from(ErrorKind::InvalidInput));
             }
@@ -335,6 +335,7 @@ fn unlzo(src: &File, dst: &mut File) -> Result<(), io::Error> {
                 }
             } else {
                 // uncompressed block
+                assert_eq!(src_len, dst_len);
                 dst.write_all(&src_data)?;
             }
         }
