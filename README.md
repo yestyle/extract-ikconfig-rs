@@ -2,19 +2,19 @@
 
 This is a Rust re-implementation of [extract-ikconfig] from Linux kernel, to extract the `.config` file from a kernel image.
 
-This will only work when the kernel was compiled with `CONFIG_IKCONFIG`.
+This will only work when the kernel was compiled with `CONFIG_IKCONFIG`, which is enabled on Arch Linux by default but not on Ubuntu.
 
 It supports all 7 compression algorithms in Linux kernel:
 
-  * CONFIG_KERNEL_GZIP
-  * CONFIG_KERNEL_BZIP2
-  * CONFIG_KERNEL_LZMA
-  * CONFIG_KERNEL_XZ
-  * CONFIG_KERNEL_LZO
-  * CONFIG_KERNEL_LZ4
-  * CONFIG_KERNEL_ZSTD
+  * `CONFIG_KERNEL_GZIP`
+  * `CONFIG_KERNEL_BZIP2`
+  * `CONFIG_KERNEL_LZMA`
+  * `CONFIG_KERNEL_XZ`
+  * `CONFIG_KERNEL_LZO`
+  * `CONFIG_KERNEL_LZ4`
+  * `CONFIG_KERNEL_ZSTD`
 
-# Pre-installation
+# Prerequisites
 
 This crate requires `liblzma` being present in the system before installation and `pkg-config` is used to find `liblzma` and other libraries during the build.
 
@@ -30,7 +30,7 @@ sudo pacman -S pkgconf xz
 sudo apt install pkg-config liblzma-dev
 ```
 
-Please refer to system manuals for other distributions. You can check if liblzma is installed by running:
+Please refer to system manuals for other distributions. You can check if `liblzma` is installed by running:
 
 ```
 $ pkg-config --libs liblzma
@@ -49,13 +49,31 @@ cargo install ikconfig
 # Usage
 
 ```
-ikconfig /boot/vmlinuz-linux
+ikconfig <path_of_kernel_image>
 ```
 
-The extracted config file will be printed on standard output as the original shell script does. Please use output redirection to save as a file if needed:
+The extracted config file will be printed on standard output as the original shell script does. Please use output redirection to save as a file if needed, e.g.:
 
 ```
 ikconfig /boot/vmlinuz-linux > .config
+```
+
+# Tests
+
+The integration tests in this repository will compare the execution time of `ikconfig` and [extract-ikconfig] shell script.
+The latter uses the commands on system to accomplish corresponding decompression, most of which are pre-installed except
+[lzop(1)][man-lzop], so you might need to install it before running `cargo test`.
+
+## Arch Linux
+
+```
+sudo pacman -S lzop
+```
+
+## Ubuntu
+
+```
+sudo apt install lzop
 ```
 
 # License
@@ -66,8 +84,5 @@ This project is licensed under [GPL-3.0](COPYING) or [MIT license](LICENSE).
 
 [extract-ikconfig]: https://github.com/torvalds/linux/blob/master/scripts/extract-ikconfig "extract-ikconfig"
 [crate-ikconfig]: https://crates.io/crates/ikconfig "ikconfig"
-[lz4-legacy-frame]: https://github.com/lz4/lz4/blob/dev/doc/lz4_Frame_format.md#legacy-frame "Legacy frame"
-[crate-lz4-flex]: https://crates.io/crates/lz4_flex "lz4_flex"
-[yestyle-lz4-flex]: https://github.com/yestyle/lz4_flex "yestyle/lz4_flex"
-[self-tests-branch]: https://github.com/yestyle/extract-ikconfig-rs/tree/tests "tests branch"
+[man-lzop]: https://linux.die.net/man/1/lzop "lzop(1)"
 
