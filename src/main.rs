@@ -438,6 +438,10 @@ mod tests {
     const MAGIC_NUMBER_LZMA: &[u8] = b"\x5d\x00\x00\x00";
     const PATTERN_OFFSET_VMLINUX_LZMA: u64 = 16063;
 
+    const PATH_VMLINUX_LZO: &str = "tests/data/vmlinux.lzo";
+    const MAGIC_NUMBER_LZO: &[u8] = b"\x89\x4c\x5a";
+    const PATTERN_OFFSET_VMLINUX_LZO: u64 = 16063;
+
     const PATH_VMLINUX_LZ4: &str = "tests/data/vmlinux.lz4";
     const MAGIC_NUMBER_LZ4: &[u8] = b"\x02\x21\x4c\x18";
     const PATTERN_OFFSET_VMLINUX_LZ4: u64 = 16063;
@@ -476,6 +480,12 @@ mod tests {
         assert_eq!(
             search_bytes(&mut file, MAGIC_NUMBER_LZMA).unwrap(),
             PATTERN_OFFSET_VMLINUX_LZMA
+        );
+
+        let mut file = File::open(PATH_VMLINUX_LZO).unwrap();
+        assert_eq!(
+            search_bytes(&mut file, MAGIC_NUMBER_LZO).unwrap(),
+            PATTERN_OFFSET_VMLINUX_LZO
         );
 
         let mut file = File::open(PATH_VMLINUX_LZ4).unwrap();
@@ -525,6 +535,13 @@ mod tests {
         );
 
         // TODO: similar to zstd below
+        // let mut file = File::open(PATH_VMLINUX_LZO).unwrap();
+        // assert_eq!(
+        //     search_ripgrep(&mut file, super::MAGIC_NUMBER_LZO).unwrap(),
+        //     PATTERN_OFFSET_VMLINUX_LZO
+        // );
+
+        // TODO: similar to zstd below
         // let mut file = File::open(PATH_VMLINUX_LZ4).unwrap();
         // assert_eq!(
         //     search_ripgrep(&mut file, super::MAGIC_NUMBER_LZ4).unwrap(),
@@ -571,6 +588,12 @@ mod tests {
         assert_eq!(
             search_regex(&mut file, super::MAGIC_NUMBER_LZMA).unwrap(),
             PATTERN_OFFSET_VMLINUX_LZMA
+        );
+
+        let mut file = File::open(PATH_VMLINUX_LZO).unwrap();
+        assert_eq!(
+            search_regex(&mut file, super::MAGIC_NUMBER_LZO).unwrap(),
+            PATTERN_OFFSET_VMLINUX_LZO
         );
 
         let mut file = File::open(PATH_VMLINUX_LZ4).unwrap();
@@ -650,6 +673,11 @@ mod tests {
             MAGIC_NUMBER_LZMA,
             super::MAGIC_NUMBER_LZMA,
         );
+    }
+
+    #[test]
+    fn compare_searching_vmlinux_lzo() {
+        compare_searching_vmlinux(PATH_VMLINUX_LZO, MAGIC_NUMBER_LZO, super::MAGIC_NUMBER_LZO);
     }
 
     #[test]
