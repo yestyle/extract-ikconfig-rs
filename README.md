@@ -4,6 +4,16 @@ This is a Rust re-implementation of [extract-ikconfig] from Linux kernel, to ext
 
 This will only work when the kernel was compiled with `CONFIG_IKCONFIG`.
 
+It supports all 7 compression algorithms in Linux kernel:
+
+  * CONFIG_KERNEL_GZIP
+  * CONFIG_KERNEL_BZIP2
+  * CONFIG_KERNEL_LZMA
+  * CONFIG_KERNEL_XZ
+  * CONFIG_KERNEL_LZO
+  * CONFIG_KERNEL_LZ4
+  * CONFIG_KERNEL_ZSTD
+
 # Pre-installation
 
 This crate requires `liblzma` being present in the system before installation and `pkg-config` is used to find `liblzma` and other libraries during the build.
@@ -47,12 +57,6 @@ The extracted config file will be printed on standard output as the original she
 ```
 ikconfig /boot/vmlinuz-linux > .config
 ```
-
-# Limitations
-
-* LZO decompression is unimplemented
-
-I haven't managed to make LZO decompression working yet, so if the kernel is compiled with `CONFIG_KERNEL_LZO`, `ikconfig` won't work. Please use the shell script [extract-ikconfig] from Linux kernel for now.
 
 # License
 
